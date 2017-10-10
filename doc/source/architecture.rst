@@ -61,7 +61,7 @@ Bastion
 
 The coordinator restarts bastions that fail (reside on failing hosts). The check is only done periodically (on the order of a few minutes). In the future, the bastion should offer a meaningful health check and a fast-failure detection and recovery.
 
-Depending on the size of the project (number of Users and instances, amount of data to transfer over SSH) it may be useful for the Bastion (with a single public IP) to be composed of multiple virtual bastions. This requires sticky load-balancing (á la Maglev [3]) to work properly, otherwise upstream routing changes would break SSH connections. For now, each bastion is implemented as a single VM or container.
+Depending on the size of the project (number of Users and instances, amount of data to transfer over SSH) it may be useful for the Bastion (with a single public IP) to be composed of multiple virtual bastions. This requires sticky load-balancing (á la Maglev [3]) to work properly, otherwise upstream routing changes would break SSH connections. Alternatively, use multiple public IPs per project and use DNS load-balancing to route your SSH connection. For now, each bastion is implemented as a single VM or container.
 
 References
 ----------
