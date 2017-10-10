@@ -47,10 +47,14 @@ Tatu's APIs support:
 * Creation of a host SSH certificate and authorized principals files based on a Project and its Roles.
 * Reading Tatu's Bastion CA public key. Bastions present host SSH certificates signed by this CA, so users configure their SSH clients to trust Tatu's bastions by adding this public key to their known_hosts file.
 
-Scope of user certificates
---------------------------
+Scope of user and host SSH certificates
+---------------------------------------
 
-Since user SSH certificates are generated with a per-project User CA, a User will require multiple certificates to SSH to servers in multiple projects (even in the same domain).
+User certificates are generated with a per-project User CA. Host certificates are generated with a per-project Host CA; and SSH servers have their TrustedUserCAKeys point to a file containing the public key of their project's User CA.
+
+Therefore, a User will require multiple certificates (one per project) to SSH to servers in multiple projects (even in the same domain).
+
+In the future we will consider using per-domain User and Host CAs. 
 
 Principals and Linux accounts
 -----------------------------
@@ -98,6 +102,7 @@ Future Work
 * APIs to control the mapping of Keystone roles to Linux accounts (including ones configured via cloud-init).
 * APIs to control finer-grained SSH access per project.
 * Allow the option of enabling the Bastion per Neutron Network - allow avoiding consuming the extra port.
+* Per-domain User and Host CAs.
 
 Automated user key rotation is not required because the API already allows generating new user certificates on demand.
 Automated server key rotation is not required because the API already allows generating new host certificates on demand. Yearly Host CA key rotation should make server key rotation redundant. 
