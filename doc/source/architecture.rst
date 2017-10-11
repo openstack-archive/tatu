@@ -18,6 +18,8 @@ The API server signs user and host SSH public keys (for both compute instances a
 ssh-vd
 ------
 
+ssh-vd may just run within the API process - To Be Decided.
+
 **ssh-vd** is the key component in installing an instance's host SSH certificate. There are two possible approaches:
 
 #. Generate private key, public key and host certificate off the instance, then install them on the instance.
