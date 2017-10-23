@@ -1,0 +1,74 @@
+import sqlalchemy as sa
+from sqlalchemy.ext.declarative import declarative_base
+import sshpubkeys
+
+Base = declarative_base()
+
+def generate_uuid():
+    return str(uuid.uuid4())
+
+class Authority(Base):
+  __tablename__ = 'authorities'
+
+  id = sa.Column(sa.String(36), primary_key=True)
+  user_pubkey = sa.Column(sa.Text)
+  user_privkey = sa.Column(sa.Text)
+  host_pubkey = sa.Column(sa.Text)
+  host_privkey = sa.Column(sa.Text)
+
+def createAuthority(session, id, user_pub, user_priv, host_pub, host_priv):
+  with session:
+    auth = Authority(id=id,
+                     user_pubkey=user_pub,
+                     user_privkey=user_priv,
+                     host_pubkey=host_pub,
+                     host_privkey=host_priv)
+    session.add(auth)
+    session.commit()
+    return auth
+
+class UserCert(Base):
+  __tablename__ = 'user_certs'
+
+  user_id = sa.Column(sa.String(36), primary_key=True)
+  auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.id'))
+  fingerprint = sa.Column(sa.String(36), primary_key=True)
+  privkey = sa.Column(sa.Text)
+  pubkey = sa.Column(sa.Text)
+  cert = sa.Column(sa.Text)
+
+def createUser(session, id, auth_id, pub, priv):
+  with session:
+    user = User(id=id,
+                auth_id=auth_id,
+                pubkey=pub,
+                privkey=priv)
+    # Generate the fingerprint from the public key
+    user.fingerprint = sshpubkeys.SSHKey(pub).hash()
+    # Retrieve the authority's private key and generate the certificate
+    
+    session.add(user)
+    session.commit()
+    return user
+
+class HostCert(Base):
+  __tablename__ = 'host_certs'
+
+  host_id = sa.Column(sa.String(36), primary_key=True)
+  fingerprint = sa.Column(sa.String(36), primary_key=True)
+  privkey = sa.Column(sa.Text)
+  pubkey = sa.Column(sa.Text)
+  cert = sa.Column(sa.Text)
+
+class Tokens(Base):
+  __tablename__ = 'tokens'
+
+  id = sa.Column(sa.String(36), primary_key=True, 
+                 default=generate_uuid)
+  hostname = sa.Column(sa.String(36))
+  instance_id = sa.Column(sa.String(36))
+  authority_id = sa.Column(sa.String(36), ForeignKey('authorities.id'))
+
+def createUserCert(session):
+
+
