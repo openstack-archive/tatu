@@ -4,6 +4,7 @@ import sshpubkeys
 import uuid
 import subprocess
 import os
+from tatu.utils import generateCert
 
 Base = declarative_base()
 
@@ -40,30 +41,6 @@ class UserCert(Base):
   pubkey = sa.Column(sa.Text)
   cert = sa.Column(sa.Text)
 
-def generateCert(auth_key, entity_key, host_name=None):
-    # Temporarily write the authority private key and entity public key to /tmp
-    ca_file = '/tmp'.join(uuid.uuid4().hex)
-    pub_prefix = uuid.uuid4().hex
-    pub_file = ''.join('/tmp/', pub_prefix, '.pub')
-    with open(ca_file, "w") as text_file:
-      text_file.write(auth_key)
-    with open(pub_file, "w") as text_file:
-      text_file.write(entity_key)
-    # Call keygen
-    if host_name is None:
-      subprocess.call(['ssh-keygen', '-P "pino"', '-s', ca_file, '-I testID', '-V -1d:+365d', '-n "myRoot,yourRoot"', pub_file], shell=True)
-    else:
-      subprocess.call(['ssh-keygen', '-P "pino"', '-s', ca_file, '-I testID', '-V -1d:+365d', '-n', host_name, '-h', pub_file], shell=True)
-    # Read the contents of the certificate file
-    cert_file = ''.join('/tmp/', pub_prefix, '-cert.pub')
-    cert = ''
-    with open(cert_file, 'r') as text_file:
-      cert = text_file.read()
-    # Delete temporary files
-    for file in [ca_file, pub_file, cert_file]:
-      os.remove(file)
-    return cert
-
 def createUserCert(session, id, auth_id, pub, priv):
   with session:
     user = User(id=id,
@@ -88,10 +65,10 @@ class Token(Base):
                  default=generate_uuid)
   hostname = sa.Column(sa.String(36))
   instance_id = sa.Column(sa.String(36))
-  auth_id = sa.Column(sa.String(36), ForeignKey('authorities.id'))
+  auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.id'))
   used = sa.Column(sa.Boolean)
   date_used = sa.Column(sa.Date)
-  fingerprint_used = sa.Column(sa.String(36), optional)
+  fingerprint_used = sa.Column(sa.String(36), default=False)
 
 def createToken(session, instance_id, auth_id, hostname):
   with session:
@@ -127,7 +104,7 @@ def createHostCert(session, token_id, pub):
     if auth is None:
       raise falcon.HTTPNotFound("Unrecognized certificate authority")
     host = HostCert(id=token.instance_id,
-                    fingerprint=sshpubkeys.SSHKey(pub).hash()
+                    fingerprint=sshpubkeys.SSHKey(pub).hash(),
                     token_id=token_id,
                     pubkey=pub,
                     cert=generateCert(auth.host_privkey, pub))

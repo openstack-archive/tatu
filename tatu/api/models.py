@@ -37,3 +37,7 @@ class HostCert(object):
   def on_post(self, req, resp):
     resp.status = falcon.HTTP_400
 
+class Token(object):
+
+  def on_post(self, req, resp):
+    resp.status = falcon.HTTP_400

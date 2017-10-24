@@ -15,7 +15,7 @@ class SQLAlchemySessionManager:
 
     def __init__(self):
         self.engine = create_engine(get_url())
-        self.Session = scoped_session(sessionmaker(self._engine))
+        self.Session = scoped_session(sessionmaker(self.engine))
 
     def process_resource(self, req, resp, resource, params):
         resource.session = self.Session()
