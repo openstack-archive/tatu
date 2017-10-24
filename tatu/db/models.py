@@ -2,7 +2,6 @@ import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
 import sshpubkeys
 import uuid
-import subprocess
 import os
 from tatu.utils import generateCert
 
@@ -21,7 +20,7 @@ class Authority(Base):
   host_privkey = sa.Column(sa.Text)
 
 def createAuthority(session, id, user_pub, user_priv, host_pub, host_priv):
-  with session:
+    print 'in createAuthority'
     auth = Authority(id=id,
                      user_pubkey=user_pub,
                      user_privkey=user_priv,
@@ -42,11 +41,13 @@ class UserCert(Base):
   cert = sa.Column(sa.Text)
 
 def createUserCert(session, id, auth_id, pub, priv):
-  with session:
-    user = User(id=id,
-                auth_id=auth_id,
-                pubkey=pub,
-                privkey=priv)
+    print 'in createUserCert'
+    user = UserCert(
+      user_id=id,
+      auth_id=auth_id,
+      pubkey=pub,
+      privkey=priv
+    )
     # Generate the fingerprint from the public key
     user.fingerprint = sshpubkeys.SSHKey(pub).hash()
     # Retrieve the authority's private key and generate the certificate
@@ -66,20 +67,18 @@ class Token(Base):
   hostname = sa.Column(sa.String(36))
   instance_id = sa.Column(sa.String(36))
   auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.id'))
-  used = sa.Column(sa.Boolean)
+  used = sa.Column(sa.Boolean, default=False)
   date_used = sa.Column(sa.Date)
-  fingerprint_used = sa.Column(sa.String(36), default=False)
+  fingerprint_used = sa.Column(sa.String(36))
 
 def createToken(session, instance_id, auth_id, hostname):
-  with session:
     # Validate the certificate authority
     auth = session.query(Authority).get(auth_id)
     if auth is None:
       raise falcon.HTTPNotFound("Unrecognized certificate authority")
     token = Token(instance_id=instance_id,
                   auth_id=auth_id,
-                  hostname=hostname,
-                  used=false)
+                  hostname=hostname)
     session.add(token)
     session.commit()
     return token
@@ -94,7 +93,7 @@ class HostCert(Base):
   cert = sa.Column(sa.Text)
 
 def createHostCert(session, token_id, pub):
-  with session:
+    print 'in createHostCert'
     token =  session.query(Token).get(token_id)
     if token is None:
       raise falcon.HTTPNotFound("Unrecognized token")
@@ -109,6 +108,7 @@ def createHostCert(session, token_id, pub):
                     pubkey=pub,
                     cert=generateCert(auth.host_privkey, pub))
     session.add(host)
+    print host
     # Update the token
     token.used = true
     token.date_used = now

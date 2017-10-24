@@ -2,6 +2,7 @@ import os
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
+from tatu.db.models import Base
 
 
 def get_url():
@@ -15,6 +16,7 @@ class SQLAlchemySessionManager:
 
     def __init__(self):
         self.engine = create_engine(get_url())
+        Base.metadata.create_all(self.engine)
         self.Session = scoped_session(sessionmaker(self.engine))
 
     def process_resource(self, req, resp, resource, params):
