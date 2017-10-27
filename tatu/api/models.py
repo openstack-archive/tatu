@@ -6,7 +6,6 @@ from tatu.db import models as db
 class Authorities(object):
 
   def on_post(self, req, resp):
-    print 'in Authorities on_post'
     body = None
     if req.content_length:
       body = json.load(req.stream)
@@ -29,20 +28,18 @@ class Authority(object):
 class UserCerts(object):
 
   def on_post(self, req, resp):
-    print 'in UserCerts on_post'
     body = None
     if req.content_length:
       body = json.load(req.stream)
-    # TODO: validation, e.g. of UUIDs
+    # TODO: validation
     user = db.createUserCert(
       self.session,
       body['user_id'],
       body['auth_id'],
-      body['pub_key'],
-      body['priv_key']
+      body['pub_key']
     )
     resp.status = falcon.HTTP_201
-    resp.location = '/users/' + body['user_id'] + '/certs/' + user.fingerprint
+    resp.location = '/usercerts/' + user.user_id + '/' + user.fingerprint
 
 class UserCert(object):
 
@@ -52,28 +49,26 @@ class UserCert(object):
 class HostCerts(object):
 
   def on_post(self, req, resp):
-    print 'in HostCerts on_post'
     body = None
     if req.content_length:
       body = json.load(req.stream)
     host = db.createHostCert(
       self.session,
       body['token_id'],
+      body['instance_id'],
       body['pub_key']
     )
     resp.status = falcon.HTTP_201
-    resp.location = '/hosts/' + host_cert.instance_id + '/certs/' + host_cert.fingerprint
+    resp.location = '/hostcerts/' + host.instance_id + '/' + host.fingerprint
 
 class HostCert(object):
 
   def on_get(self, req, resp, host_id, fingerprint):
-    print 'in HostCert on_post'
     resp.status = falcon.HTTP_400
 
 class Token(object):
 
   def on_post(self, req, resp):
-    print 'in Token on_post'
     body = None
     if req.content_length:
       body = json.load(req.stream)
@@ -84,4 +79,4 @@ class Token(object):
       body['hostname']
     )
     resp.status = falcon.HTTP_201
-    resp.body = json.dumps({'token_id': token.id})
+    resp.location = '/hosttokens/' + token.token_id

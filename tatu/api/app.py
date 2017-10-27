@@ -6,11 +6,11 @@ def create_app(sa):
   api = falcon.API(middleware=[sa])
   api.add_route('/authorities', models.Authorities())
   api.add_route('/authorities/{ca_id}', models.Authority())
-  api.add_route('/user_certs', models.UserCerts())
-  api.add_route('/users/{user_id}/certs/{fingerprint}', models.UserCert())
-  api.add_route('/host_certs', models.HostCerts())
-  api.add_route('/hosts/{host_id}/certs/{fingerprint}', models.HostCert())
-  api.add_route('/host_cert_tokens', models.Token())
+  api.add_route('/usercerts', models.UserCerts())
+  api.add_route('/usercerts/{user_id}/{fingerprint}', models.UserCert())
+  api.add_route('/hostcerts', models.HostCerts())
+  api.add_route('/hostcerts/{host_id}/{fingerprint}', models.HostCert())
+  api.add_route('/hosttokens', models.Token())
   return api
 
 

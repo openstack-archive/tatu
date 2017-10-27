@@ -2,30 +2,40 @@ import os
 import subprocess
 import uuid
 
-def generateCert(auth_key, entity_key, host_name=None):
-    # TODO: must clean up key files regardless of outcome
-    # Temporarily write the authority private key and entity public key to /tmp
-    ca_file = ''.join(['/tmp/', uuid.uuid4().hex])
-    pub_prefix = uuid.uuid4().hex
-    pub_file = ''.join(['/tmp/', pub_prefix, '.pub'])
+def generateCert(auth_key, entity_key, hostname=None):
+  # Temporarily write the authority private key and entity public key to files
+  prefix = uuid.uuid4().hex
+  # Todo: make the temporary directory configurable or secure it.
+  dir = '/tmp/sshaas'
+  ca_file = ''.join([dir, prefix])
+  pub_file = ''.join([dir, prefix, '.pub'])
+  cert_file = ''.join([dir, prefix, '-cert.pub'])
+  cert = ''
+  try:
+    os.open(ca_file, os.O_WRONLY | os.O_CREAT, 0o600)
     with open(ca_file, "w") as text_file:
       text_file.write(auth_key)
-    with open(pub_file, "w") as text_file:
+    with open(pub_file, "w", 0o644) as text_file:
       text_file.write(entity_key)
-    cert_file = ''.join(['/tmp/', pub_prefix, '-cert.pub'])
-    args = []
-    if host_name is None:
-      args = ['ssh-keygen', '-P "pino"', '-s', ca_file, '-I testID', '-V -1d:+365d', '-n "myRoot,yourRoot"', pub_file]
+    args = ['ssh-keygen', '-P "pinot"', '-s', ca_file, '-I testID', '-V',
+            '-1d:+365d', '-n']
+    if hostname is None:
+      args.extend(['"myRoot,yourRoot"', pub_file])
     else:
-      args = ['ssh-keygen', '-P "pino"', '-s', ca_file, '-I testID', '-V -1d:+365d', '-n', host_name, '-h', pub_file]
-    print args
-    subprocess.call(args, shell=True)
+      args.extend([hostname, '-h', pub_file])
+    print subprocess.check_output(args, stderr=subprocess.STDOUT)
     # Read the contents of the certificate file
     cert = ''
     with open(cert_file, 'r') as text_file:
       cert = text_file.read()
+  except Exception as e:
+    print e
+  finally:
     # Delete temporary files
     for file in [ca_file, pub_file, cert_file]:
-      os.remove(file)
+      try:
+        os.remove(file)
+        pass
+      except:
+        pass
     return cert
-
