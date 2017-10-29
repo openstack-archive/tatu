@@ -32,17 +32,11 @@ user_pub_key = user_key.publickey().exportKey('OpenSSH')
 user_fingerprint = sshpubkeys.SSHKey(user_pub_key).hash()
 
 auth_id = str(uuid.uuid4())
-auth_user_key = RSA.generate(2048)
-auth_host_key = RSA.generate(2048)
-auth_user_pub_key = auth_user_key.publickey().exportKey('OpenSSH')
-auth_host_pub_key = auth_host_key.publickey().exportKey('OpenSSH')
 
 @pytest.mark.dependency()
 def test_post_authority(client, db):
   body = {
     'auth_id': auth_id,
-    'user_key': auth_user_key.exportKey('PEM'),
-    'host_key': auth_host_key.exportKey('PEM'),
   }  
   response = client.simulate_post(
     '/authorities',
@@ -61,9 +55,7 @@ def test_get_authority(client):
   body = json.loads(response.content)
   assert 'auth_id' in body
   assert 'user_key.pub' in body
-  assert body['user_key.pub'] == auth_user_pub_key
   assert 'host_key.pub' in body
-  assert body['host_key.pub'] == auth_host_pub_key
   assert 'user_key' not in body
   assert 'host_key' not in body
 

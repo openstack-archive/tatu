@@ -13,8 +13,6 @@ class Authorities(object):
     db.createAuthority(
       self.session,
       body['auth_id'],
-      user_key=body['user_key'],
-      host_key=body['host_key'],
     )
     resp.status = falcon.HTTP_201
     resp.location = '/authorities/' + body['auth_id']

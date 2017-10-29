@@ -23,10 +23,10 @@ class Authority(Base):
 def getAuthority(session, auth_id):
   return session.query(Authority).get(auth_id)
 
-def createAuthority(session, auth_id, user_key, host_key):
+def createAuthority(session, auth_id):
   auth = Authority(auth_id=auth_id,
-                   user_key=user_key,
-                   host_key=host_key)
+                   user_key=RSA.generate(2048).exportKey('PEM'),
+                   host_key=RSA.generate(2048).exportKey('PEM'))
   session.add(auth)
   session.commit()
   return auth
