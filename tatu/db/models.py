@@ -1,6 +1,7 @@
 from datetime import datetime
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.exc import IntegrityError
 import falcon
 import sshpubkeys
 import uuid
@@ -28,7 +29,10 @@ def createAuthority(session, auth_id):
                    user_key=RSA.generate(2048).exportKey('PEM'),
                    host_key=RSA.generate(2048).exportKey('PEM'))
   session.add(auth)
-  session.commit()
+  try:
+    session.commit()
+  except IntegrityError:
+    raise falcon.HTTPConflict("This certificate authority already exists.")
   return auth
 
 class UserCert(Base):

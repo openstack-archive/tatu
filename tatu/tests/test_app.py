@@ -52,6 +52,17 @@ def test_post_authority(client):
   #auth = session.query(Authority).get(auth_id)
   #assert auth is not None
 
+@pytest.mark.dependency(depends=['test_post_authority'])
+def test_post_authority_duplicate(client):
+  body = {
+    'auth_id': auth_id,
+  }
+  response = client.simulate_post(
+    '/authorities',
+    body=json.dumps(body)
+  )
+  assert response.status == falcon.HTTP_CONFLICT
+
 def test_post_no_body(client):
   for path in ['/authorities', '/usercerts', '/hosttokens',
                '/hostcerts', '/novavendordata']:
