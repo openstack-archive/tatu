@@ -32,6 +32,7 @@ user_pub_key = user_key.publickey().exportKey('OpenSSH')
 user_fingerprint = sshpubkeys.SSHKey(user_pub_key).hash()
 
 auth_id = str(uuid.uuid4())
+auth_user_pub_key = None
 
 @pytest.mark.dependency()
 def test_post_authority(client, db):
@@ -55,6 +56,8 @@ def test_get_authority(client):
   body = json.loads(response.content)
   assert 'auth_id' in body
   assert 'user_key.pub' in body
+  global auth_user_pub_key
+  auth_user_pub_key = body['user_key.pub']
   assert 'host_key.pub' in body
   assert 'user_key' not in body
   assert 'host_key' not in body
@@ -146,6 +149,30 @@ def host_request(token, host=host_id, pub_key=host_pub_key):
     'host_id': host,
     'key.pub': pub_key
   }
+
+@pytest.mark.dependency(depends=['test_post_authority'])
+def test_post_novavendordata(client, db):
+  host = str(uuid.uuid4())
+  req = {
+    'instance-id': host,
+    'project-id': auth_id,
+    'hostname': 'mytest.testing'
+  }
+  response = client.simulate_post(
+    '/novavendordata',
+    body=json.dumps(req)
+  )
+  assert response.status == falcon.HTTP_CREATED
+  assert 'location' in response.headers
+  location_path = response.headers['location'].split('/')
+  assert location_path[1] == 'hosttokens'
+  vendordata = json.loads(response.content)
+  assert 'token' in vendordata
+  assert vendordata['token'] == location_path[-1]
+  assert 'auth_pub_key_user' in vendordata
+  assert vendordata['auth_pub_key_user'] == auth_user_pub_key
+  assert 'principals' in vendordata
+  assert vendordata['principals'] == 'admin'
 
 @pytest.mark.dependency(depends=['test_post_authority'])
 def test_post_token_and_host(client, db):

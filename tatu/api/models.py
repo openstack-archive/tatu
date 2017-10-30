@@ -99,7 +99,7 @@ class HostCert(object):
     resp.body = json.dumps(body)
     resp.status = falcon.HTTP_OK
 
-class Token(object):
+class Tokens(object):
 
   def on_post(self, req, resp):
     body = None
@@ -113,3 +113,39 @@ class Token(object):
     )
     resp.status = falcon.HTTP_201
     resp.location = '/hosttokens/' + token.token_id
+
+class NovaVendorData(object):
+
+  def on_post(self, req, resp):
+    # An example of the data nova sends to vendordata services:
+    # {
+    #     "hostname": "foo",
+    #     "image-id": "75a74383-f276-4774-8074-8c4e3ff2ca64",
+    #     "instance-id": "2ae914e9-f5ab-44ce-b2a2-dcf8373d899d",
+    #     "metadata": {},
+    #     "project-id": "039d104b7a5c4631b4ba6524d0b9e981",
+    #     "user-data": null
+    # }
+    body = None
+    if req.content_length:
+      body = json.load(req.stream)
+    token = db.createToken(
+      self.session,
+      body['instance-id'],
+      body['project-id'],
+      body['hostname']
+    )
+    auth = db.getAuthority(self.session, body['project-id'])
+    if auth is None:
+      resp.status = falcon.HTTP_NOT_FOUND
+      return
+    key = RSA.importKey(auth.user_key)
+    pub_key = key.publickey().exportKey('OpenSSH')
+    vendordata = {
+      'token': token.token_id,
+      'auth_pub_key_user': pub_key,
+      'principals': 'admin'
+    }
+    resp.body = json.dumps(vendordata)
+    resp.location = '/hosttokens/' + token.token_id
+    resp.status = falcon.HTTP_201
