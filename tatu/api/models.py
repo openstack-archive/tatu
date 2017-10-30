@@ -1,24 +1,51 @@
 import falcon
 import json
+import uuid
 from tatu.db import models as db
 from Crypto.PublicKey import RSA
 
+def validate_uuid(string):
+  try:
+    val = uuid.UUID(string, version=4)
+  except ValueError:
+    msg = '{} is not a valid UUID'.format(string)
+    raise falcon.HTTPBadRequest('Bad request', msg)
+
+def validate_uuids(req, params):
+  id_keys = ['token_id', 'auth_id', 'host_id', 'user_id', 'project-id', 'instance-id']
+  if req.method in ('POST', 'PUT'):
+    for key in id_keys:
+      if key in req.body:
+        validate_uuid(req.body[key])
+  for key in id_keys:
+    if key in params:
+      validate_uuid(params[key])
+
+def validate(req, resp, resource, params):
+  if req.content_length:
+    # Store the body since we cannot read the stream again later
+    req.body = json.load(req.stream)
+  elif req.method in ('POST', 'PUT'):
+    raise falcon.HTTPBadRequest('The POST/PUT request is missing a body.')
+  validate_uuids(req, params)
 
 class Authorities(object):
 
+  @falcon.before(validate)
   def on_post(self, req, resp):
-    body = None
-    if req.content_length:
-      body = json.load(req.stream)
-    db.createAuthority(
-      self.session,
-      body['auth_id'],
-    )
+    try:
+      db.createAuthority(
+        self.session,
+        req.body['auth_id'],
+      )
+    except KeyError as e:
+      raise falcon.HTTPBadRequest(str(e))
     resp.status = falcon.HTTP_201
-    resp.location = '/authorities/' + body['auth_id']
+    resp.location = '/authorities/' + req.body['auth_id']
 
 class Authority(object):
 
+  @falcon.before(validate)
   def on_get(self, req, resp, auth_id):
     auth = db.getAuthority(self.session, auth_id)
     if auth is None:
@@ -38,22 +65,24 @@ class Authority(object):
 
 class UserCerts(object):
 
+  @falcon.before(validate)
   def on_post(self, req, resp):
-    body = None
-    if req.content_length:
-      body = json.load(req.stream)
     # TODO: validation
-    user = db.createUserCert(
-      self.session,
-      body['user_id'],
-      body['auth_id'],
-      body['key.pub']
-    )
+    try:
+      user = db.createUserCert(
+        self.session,
+        req.body['user_id'],
+        req.body['auth_id'],
+        req.body['key.pub']
+      )
+    except KeyError as e:
+      raise falcon.HTTPBadRequest(str(e))
     resp.status = falcon.HTTP_201
     resp.location = '/usercerts/' + user.user_id + '/' + user.fingerprint
 
 class UserCert(object):
 
+  @falcon.before(validate)
   def on_get(self, req, resp, user_id, fingerprint):
     user = db.getUserCert(self.session, user_id, fingerprint)
     if user is None:
@@ -70,21 +99,25 @@ class UserCert(object):
 
 class HostCerts(object):
 
+  @falcon.before(validate)
   def on_post(self, req, resp):
-    body = None
-    if req.content_length:
-      body = json.load(req.stream)
-    host = db.createHostCert(
-      self.session,
-      body['token_id'],
-      body['host_id'],
-      body['key.pub']
-    )
+    # Note that we could have found the host_id using the token_id.
+    # But requiring the host_id makes it a little harder to steal the token.
+    try:
+      host = db.createHostCert(
+        self.session,
+        req.body['token_id'],
+        req.body['host_id'],
+        req.body['key.pub']
+      )
+    except KeyError as e:
+      raise falcon.HTTPBadRequest(str(e))
     resp.status = falcon.HTTP_201
     resp.location = '/hostcerts/' + host.host_id + '/' + host.fingerprint
 
 class HostCert(object):
 
+  @falcon.before(validate)
   def on_get(self, req, resp, host_id, fingerprint):
     host = db.getHostCert(self.session, host_id, fingerprint)
     if host is None:
@@ -101,21 +134,23 @@ class HostCert(object):
 
 class Tokens(object):
 
+  @falcon.before(validate)
   def on_post(self, req, resp):
-    body = None
-    if req.content_length:
-      body = json.load(req.stream)
-    token = db.createToken(
-      self.session,
-      body['host_id'],
-      body['auth_id'],
-      body['hostname']
-    )
+    try:
+      token = db.createToken(
+        self.session,
+        req.body['host_id'],
+        req.body['auth_id'],
+        req.body['hostname']
+      )
+    except KeyError as e:
+      raise falcon.HTTPBadRequest(str(e))
     resp.status = falcon.HTTP_201
     resp.location = '/hosttokens/' + token.token_id
 
 class NovaVendorData(object):
 
+  @falcon.before(validate)
   def on_post(self, req, resp):
     # An example of the data nova sends to vendordata services:
     # {
@@ -126,16 +161,16 @@ class NovaVendorData(object):
     #     "project-id": "039d104b7a5c4631b4ba6524d0b9e981",
     #     "user-data": null
     # }
-    body = None
-    if req.content_length:
-      body = json.load(req.stream)
-    token = db.createToken(
-      self.session,
-      body['instance-id'],
-      body['project-id'],
-      body['hostname']
-    )
-    auth = db.getAuthority(self.session, body['project-id'])
+    try:
+      token = db.createToken(
+        self.session,
+        req.body['instance-id'],
+        req.body['project-id'],
+        req.body['hostname']
+      )
+    except KeyError as e:
+      raise falcon.HTTPBadRequest(str(e))
+    auth = db.getAuthority(self.session, req.body['project-id'])
     if auth is None:
       resp.status = falcon.HTTP_NOT_FOUND
       return
