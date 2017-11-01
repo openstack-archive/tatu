@@ -1,0 +1,11 @@
+#cloud-config
+write_files:
+  - path: /etc/ssh/auth_principals/ubuntu
+    content: webRoot
+  - path: /etc/ssh/ca_users.pub
+    content: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDM+YVCEZ4xCqBIGOQOEsGzBzOFS3JNDtPxLAviBMtS4zCwuGmOMvAvatKtPY5E9JMnkhI72faJnwYc4w/pnXf4Sh6AnLfwcOoQ6U16iucfY8tPOeFQhKJokSRdwnfm08QMOHN0xzCA/tL6HHZgPXGHUgTL18kkjv5Zk5Nv1H/ciuOSz24edo94Fu9eIQkK1pUhdejC6hDKdbki/c/3coZU4ZNDdtIpRlGnrUNTaAIq+E0TYEZkgClglTlBQOTvUoRkxEng/U23dfBCCz5DfewfA+6higUil5lIvidbaFjUiTMox38w9fM0wzUUs3o5pC9X/H3BE4mBrfpS9VmYHgll root@Bamboo
+runcmd:
+  - sed -i -e '$aTrustedUserCAKeys /etc/ssh/ca_user.pub' /etc/ssh/sshd_config
+  - sed -i -e '$aAuthorizedPrincipalsFile /etc/ssh/auth_principals/%u' /etc/ssh/sshd_config
+
+  - systemctl restart ssh

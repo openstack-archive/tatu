@@ -4,11 +4,13 @@ import uuid
 from tatu.db import models as db
 from Crypto.PublicKey import RSA
 
-def validate_uuid(string):
+def validate_uuid(map, key):
   try:
-    val = uuid.UUID(string, version=4)
+    # Verify it's a valid UUID, then convert to canonical string representation
+    # to avoiid DB errors.
+    map[key] = str(uuid.UUID(map[key], version=4))
   except ValueError:
-    msg = '{} is not a valid UUID'.format(string)
+    msg = '{} is not a valid UUID'.format(map[key])
     raise falcon.HTTPBadRequest('Bad request', msg)
 
 def validate_uuids(req, params):
@@ -16,10 +18,10 @@ def validate_uuids(req, params):
   if req.method in ('POST', 'PUT'):
     for key in id_keys:
       if key in req.body:
-        validate_uuid(req.body[key])
+        validate_uuid(req.body, key)
   for key in id_keys:
     if key in params:
-      validate_uuid(params[key])
+      validate_uuid(params, key)
 
 def validate(req, resp, resource, params):
   if req.content_length:
