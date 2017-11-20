@@ -290,6 +290,21 @@ def test_post_token_and_host(client):
   assert location[3] == sshpubkeys.SSHKey(host_pub_key).hash()
 
 @pytest.mark.dependency(depends=['test_post_token_and_host'])
+def test_post_token_same_host_id(client):
+  # Posting with the same host ID should return the same token
+  token = token_request()
+  response = client.simulate_post(
+    '/hosttokens',
+    body=json.dumps(token)
+  )
+  assert response.status == falcon.HTTP_CREATED
+  assert 'location' in response.headers
+  location_path = response.headers['location'].split('/')
+  assert location_path[1] == 'hosttokens'
+  # The token id should be the same as that from the previous test.
+  assert token_id == location_path[-1]
+
+@pytest.mark.dependency(depends=['test_post_token_and_host'])
 def test_get_host(client):
   response = client.simulate_get('/hostcerts/' + host_id + '/' + host_fingerprint)
   assert response.status == falcon.HTTP_OK
@@ -311,7 +326,7 @@ def test_get_host_with_bad_uuid(client):
   assert response.status == falcon.HTTP_BAD_REQUEST
 
 def test_post_token_unknown_auth(client):
-  token = token_request(random_uuid())
+  token = token_request(auth=random_uuid())
   response = client.simulate_post(
     '/hosttokens',
     body=json.dumps(token)
@@ -330,7 +345,7 @@ def test_post_host_with_bogus_token(client):
 @pytest.mark.dependency(depends=['test_post_token_and_host'])
 def test_post_host_with_wrong_host_id(client):
   # Get a new token for the same host_id as the base test.
-  token = token_request()
+  token = token_request(host=random_uuid())
   response = client.simulate_post(
     '/hosttokens',
     body=json.dumps(token)
@@ -348,11 +363,12 @@ def test_post_host_with_wrong_host_id(client):
     '/hostcerts',
     body=json.dumps(host)
   )
+  assert response.status == falcon.HTTP_CONFLICT
 
 @pytest.mark.dependency(depends=['test_post_token_and_host'])
-def test_post_host_same_public_key_fails(client):
-  # Use a new token compared to the test this depends on.
-  # Show that using the same host ID and public key fails.
+def test_post_host_different_public_key_fails(client):
+  # Use the same token compared to the test this depends on.
+  # Show that using the same host ID and different public key fails.
   token = token_request()
   response = client.simulate_post(
     '/hosttokens',
@@ -362,7 +378,9 @@ def test_post_host_same_public_key_fails(client):
   assert 'location' in response.headers
   location_path = response.headers['location'].split('/')
   assert location_path[1] == 'hosttokens'
-  host = host_request(location_path[-1])
+  key = RSA.generate(2048)
+  pub_key = key.publickey().exportKey('OpenSSH')
+  host = host_request(location_path[-1], pub_key=pub_key)
   response = client.simulate_post(
     '/hostcerts',
     body=json.dumps(host)
@@ -380,4 +398,4 @@ def test_post_host_with_used_token(client):
     '/hostcerts',
     body=json.dumps(host)
   )
-  assert response.status == falcon.HTTP_FORBIDDEN
+  assert response.status == falcon.HTTP_CONFLICT

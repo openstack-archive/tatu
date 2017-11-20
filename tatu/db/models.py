@@ -50,7 +50,7 @@ def createUserCert(session, user_id, auth_id, pub):
     # Retrieve the authority's private key and generate the certificate
     auth = getAuthority(session, auth_id)
     if auth is None:
-      raise falcon.HTTPNotFound()
+      raise falcon.HTTPNotFound(description='No Authority found with that ID')
     fingerprint = sshpubkeys.SSHKey(pub).hash()
     certRecord = session.query(UserCert).get([user_id, fingerprint])
     if certRecord is not None:
@@ -74,7 +74,7 @@ class Token(Base):
   token_id = sa.Column(sa.String(36), primary_key=True, 
                  default=generate_uuid)
   auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
-  host_id = sa.Column(sa.String(36))
+  host_id = sa.Column(sa.String(36), index=True, unique=True)
   hostname = sa.Column(sa.String(36))
   used = sa.Column(sa.Boolean, default=False)
   date_used = sa.Column(sa.DateTime, default=datetime.min)
@@ -84,7 +84,15 @@ def createToken(session, host_id, auth_id, hostname):
     # Validate the certificate authority
     auth = getAuthority(session, auth_id)
     if auth is None:
-      raise falcon.HTTPNotFound()
+      raise falcon.HTTPNotFound(description='No Authority found with that ID')
+    #Check whether a token was already created for this host_id
+    try:
+      token = session.query(Token).filter(Token.host_id == host_id).one()
+      if token is not None:
+        return token
+    except:
+      pass
+
     token = Token(host_id=host_id,
                   auth_id=auth_id,
                   hostname=hostname)
@@ -109,15 +117,26 @@ def getHostCert(session, host_id, fingerprint):
 def createHostCert(session, token_id, host_id, pub):
     token =  session.query(Token).get(token_id)
     if token is None:
-      raise falcon.HTTPNotFound()
-    if token.used:
-      raise falcon.HTTPForbidden(description='The presented token was previously used')
+      raise falcon.HTTPNotFound(description='No Token found with that ID')
     if token.host_id != host_id:
-      raise falcon.HTTPForbidden(description='The token is not valid for this instance ID')
+      raise falcon.HTTPConflict(description='The token is not valid for this instance ID')
+    fingerprint = sshpubkeys.SSHKey(pub).hash()
+
+    if token.used:
+      if token.fingerprint_used != fingerprint:
+        raise falcon.HTTPConflict(description='The token was previously used with a different public key')
+      # The token was already used for same host and pub key. Return record.
+      host = session.query(HostCert).get([host_id, fingerprint])
+      if host is None:
+        raise falcon.HTTPInternalServerError(
+          description='The token was used, but no corresponding Host record was found.')
+      if host.token_id == token_id:
+        return host
+      raise falcon.HTTPConflict(description='The presented token was previously used')
+
     auth = getAuthority(session, token.auth_id)
     if auth is None:
-      raise falcon.HTTPNotFound()
-    fingerprint = sshpubkeys.SSHKey(pub).hash()
+      raise falcon.HTTPNotFound(description='No Authority found with that ID')
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
       raise falcon.HTTPConflict('This public key is already signed.')
@@ -128,6 +147,7 @@ def createHostCert(session, token_id, host_id, pub):
                     fingerprint=fingerprint,
                     auth_id=token.auth_id,
                     token_id=token_id,
+                    pubkey = pub,
                     cert=cert,
                     hostname=token.hostname)
     session.add(host)

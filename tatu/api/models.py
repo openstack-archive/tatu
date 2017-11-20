@@ -1,5 +1,6 @@
 import falcon
 import json
+import logging
 import uuid
 from tatu.db import models as db
 from Crypto.PublicKey import RSA
@@ -30,6 +31,18 @@ def validate(req, resp, resource, params):
   elif req.method in ('POST', 'PUT'):
     raise falcon.HTTPBadRequest('The POST/PUT request is missing a body.')
   validate_uuids(req, params)
+
+class Logger(object):
+  def __init__(self):
+    self.logger = logging.getLogger('gunicorn.error')
+
+  def process_response(self, req, resp, resource, params):
+    self.logger.debug(
+      'Request {0} {1} with body {2} produced'
+      'response with status {3} location {4} and body {5}'.format(
+        req.method, req.relative_uri,
+        req.body if hasattr(req, 'body') else 'None',
+        resp.status, resp.location, resp.body))
 
 class Authorities(object):
 
@@ -129,7 +142,7 @@ class HostCert(object):
       'host_id': host.host_id,
       'fingerprint': host.fingerprint,
       'auth_id': host.auth_id,
-      'key-cert.pub': host.pubkey,
+      'key-cert.pub': host.cert,
     }
     resp.body = json.dumps(body)
     resp.status = falcon.HTTP_OK
