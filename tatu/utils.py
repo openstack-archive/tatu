@@ -20,12 +20,12 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
       text_file.write(auth_key)
     with open(pub_file, "w", 0o644) as text_file:
       text_file.write(entity_key)
-    args = ['ssh-keygen', '-P "pinot"', '-s', ca_file, '-I testID', '-V',
-            '-1d:+365d', '-n']
+    args = ['ssh-keygen', '-s', ca_file, '-I', 'testID', '-V',
+            '-1d:+365d']
     if hostname is None:
-      args.extend(['"' + principals + '"', pub_file])
+      args.extend(['-n', principals, pub_file])
     else:
-      args.extend([hostname, '-h', pub_file])
+      args.extend(['-h', pub_file])
     print subprocess.check_output(args, stderr=subprocess.STDOUT)
     # Read the contents of the certificate file
     cert = ''

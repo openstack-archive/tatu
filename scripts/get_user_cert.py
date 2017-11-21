@@ -13,10 +13,6 @@ keytxt = key.exportKey('PEM')
 pubkeytxt = key.publickey().exportKey('OpenSSH')
 server = 'http://127.0.0.1:18321'
 
-with open('/etc/ssh/ssh_host_rsa_key.pub', 'r') as f:
-  host_key_pub = f.read()
-
-
 user = {
     'user_id': user_id,
     'auth_id': auth_id,
@@ -49,6 +45,7 @@ with open(keyfile + '_user_id', 'w') as f:
 # Write the user private key
 with open(keyfile, 'w') as f:
   f.write(keytxt)
+os.chmod(keyfile, 0600)
 
 # Write the user public key
 with open(keyfile + '.pub', 'w') as f:
