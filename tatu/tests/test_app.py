@@ -36,7 +36,7 @@ auth_id = random_uuid()
 auth_user_pub_key = None
 
 @pytest.mark.dependency()
-def test_post_authority(client):
+def test_post_authority(client, auth_id=auth_id):
   body = {
     'auth_id': auth_id,
   }
@@ -46,9 +46,10 @@ def test_post_authority(client):
   )
   assert response.status == falcon.HTTP_CREATED
   assert response.headers['location'] == '/authorities/' + auth_id
-  #session = db.Session()
-  #auth = session.query(Authority).get(auth_id)
-  #assert auth is not None
+
+def test_stress_post_authority(client):
+  for i in range(10000):
+    test_post_authority(client, auth_id=random_uuid())
 
 @pytest.mark.dependency(depends=['test_post_authority'])
 def test_post_authority_duplicate(client):
@@ -285,7 +286,39 @@ def test_post_token_and_host(client):
   location = response.headers['location'].split('/')
   assert location[1] == 'hostcerts'
   assert location[2] == host_id
-  assert location[3] == sshpubkeys.SSHKey(host_pub_key).hash()
+  assert location[3] == host_fingerprint
+
+def test_stress_post_token_same_host_id(client):
+  my_auth_id = random_uuid()
+  test_post_authority(client, my_auth_id)
+  for i in range(10000):
+    hid = random_uuid()
+    key = RSA.generate(2048)
+    pub_key = key.publickey().exportKey('OpenSSH')
+    fingerprint = sshpubkeys.SSHKey(key).hash()
+    token = token_request(auth=auth_id, host=hid)
+    response = client.simulate_post(
+      '/hosttokens',
+      body=json.dumps(token)
+    )
+    assert response.status == falcon.HTTP_CREATED
+    assert 'location' in response.headers
+    location_path = response.headers['location'].split('/')
+    assert location_path[1] == 'hosttokens'
+    # Verify that it's a valid UUID
+    uuid.UUID(token_id, version=4)
+    host = host_request(token_id, host=hid, pub_key=pub_key)
+    response = client.simulate_post(
+      '/hostcerts',
+      body=json.dumps(host)
+    )
+    assert response.status == falcon.HTTP_CREATED
+    assert 'location' in response.headers
+    location = response.headers['location'].split('/')
+    assert location[1] == 'hostcerts'
+    assert location[2] == host_id
+    assert location[3] == fingerprint
+
 
 @pytest.mark.dependency(depends=['test_post_token_and_host'])
 def test_post_token_same_host_id(client):
