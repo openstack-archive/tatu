@@ -7,6 +7,7 @@ import uuid
 from tatu.api.app import create_app
 from tatu.db.persistence import SQLAlchemySessionManager
 from tatu.db.models import Authority
+from tatu.utils import random_uuid
 from Crypto.PublicKey import RSA
 import sshpubkeys
 
@@ -18,9 +19,6 @@ def db():
 def client(db):
   api = create_app(db)
   return testing.TestClient(api)
-
-def random_uuid():
-  return str(uuid.uuid4())
 
 token_id = ''
 

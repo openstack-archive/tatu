@@ -2,7 +2,10 @@ import os
 import subprocess
 import uuid
 
-def generateCert(auth_key, entity_key, hostname=None):
+def random_uuid():
+  return str(uuid.uuid4())
+
+def generateCert(auth_key, entity_key, hostname=None, principals='root'):
   # Temporarily write the authority private key and entity public key to files
   prefix = uuid.uuid4().hex
   # Todo: make the temporary directory configurable or secure it.
@@ -20,7 +23,7 @@ def generateCert(auth_key, entity_key, hostname=None):
     args = ['ssh-keygen', '-P "pinot"', '-s', ca_file, '-I testID', '-V',
             '-1d:+365d', '-n']
     if hostname is None:
-      args.extend(['"myRoot,yourRoot"', pub_file])
+      args.extend(['"' + principals + '"', pub_file])
     else:
       args.extend([hostname, '-h', pub_file])
     print subprocess.check_output(args, stderr=subprocess.STDOUT)

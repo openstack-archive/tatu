@@ -6,13 +6,10 @@ import falcon
 import sshpubkeys
 import uuid
 import os
-from tatu.utils import generateCert
+from tatu.utils import generateCert,random_uuid
 from Crypto.PublicKey import RSA
 
 Base = declarative_base()
-
-def generate_uuid():
-    return str(uuid.uuid4())
 
 class Authority(Base):
   __tablename__ = 'authorities'
@@ -55,7 +52,7 @@ def createUserCert(session, user_id, auth_id, pub):
     certRecord = session.query(UserCert).get([user_id, fingerprint])
     if certRecord is not None:
       raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(auth.user_key, pub)
+    cert = generateCert(auth.user_key, pub, principals='admin,root')
     if cert is None:
       raise falcon.HTTPInternalServerError("Failed to generate the certificate")
     user = UserCert(
@@ -72,7 +69,7 @@ class Token(Base):
   __tablename__ = 'tokens'
 
   token_id = sa.Column(sa.String(36), primary_key=True, 
-                 default=generate_uuid)
+                 default=random_uuid)
   auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
   host_id = sa.Column(sa.String(36), index=True, unique=True)
   hostname = sa.Column(sa.String(36))
@@ -140,7 +137,7 @@ def createHostCert(session, token_id, host_id, pub):
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
       raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(auth.host_key, pub, token.hostname)
+    cert = generateCert(auth.host_key, pub, hostname=token.hostname)
     if cert == '':
       raise falcon.HTTPInternalServerError("Failed to generate the certificate")
     host = HostCert(host_id=host_id,
