@@ -15,7 +15,8 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
   cert_file = ''.join([dir, prefix, '-cert.pub'])
   cert = ''
   try:
-    os.open(ca_file, os.O_WRONLY | os.O_CREAT, 0o600)
+    fd = os.open(ca_file, os.O_WRONLY | os.O_CREAT, 0o600)
+    os.close(fd)
     with open(ca_file, "w") as text_file:
       text_file.write(auth_key)
     with open(pub_file, "w", 0o644) as text_file:
@@ -26,7 +27,7 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
       args.extend(['-n', principals, pub_file])
     else:
       args.extend(['-h', pub_file])
-    print subprocess.check_output(args, stderr=subprocess.STDOUT)
+    subprocess.check_output(args, stderr=subprocess.STDOUT)
     # Read the contents of the certificate file
     cert = ''
     with open(cert_file, 'r') as text_file:

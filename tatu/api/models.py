@@ -36,10 +36,13 @@ class Logger(object):
   def __init__(self):
     self.logger = logging.getLogger('gunicorn.error')
 
+  def process_resource(self, req, resp, resource, params):
+    self.logger.debug('Received request {0} {1}'.format(req.method, req.relative_uri))
+
   def process_response(self, req, resp, resource, params):
     self.logger.debug(
-      'Request {0} {1} with body {2} produced'
-      'response with status {3} location {4} and body {5}'.format(
+      'Request {0} {1} with body {2} produced response '
+      'with status {3} location {4} and body {5}'.format(
         req.method, req.relative_uri,
         req.body if hasattr(req, 'body') else 'None',
         resp.status, resp.location, resp.body))

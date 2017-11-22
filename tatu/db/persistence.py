@@ -7,6 +7,7 @@ from tatu.db.models import Base
 
 def get_url():
     return os.getenv("DATABASE_URL", "sqlite:///development.db")
+    #return os.getenv("DATABASE_URL", "sqlite:///:memory:")
 
 class SQLAlchemySessionManager:
     """

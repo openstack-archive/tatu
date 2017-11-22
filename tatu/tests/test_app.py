@@ -10,6 +10,7 @@ from tatu.db.models import Authority
 from tatu.utils import random_uuid
 from Crypto.PublicKey import RSA
 import sshpubkeys
+import time
 
 @pytest.fixture
 def db():
@@ -25,12 +26,12 @@ token_id = ''
 host_id = random_uuid()
 host_key = RSA.generate(2048)
 host_pub_key = host_key.publickey().exportKey('OpenSSH')
-host_fingerprint = sshpubkeys.SSHKey(host_pub_key).hash()
+host_fingerprint = sshpubkeys.SSHKey(host_pub_key).hash_md5()
 
 user_id = random_uuid()
 user_key = RSA.generate(2048)
 user_pub_key = user_key.publickey().exportKey('OpenSSH')
-user_fingerprint = sshpubkeys.SSHKey(user_pub_key).hash()
+user_fingerprint = sshpubkeys.SSHKey(user_pub_key).hash_md5()
 
 auth_id = random_uuid()
 auth_user_pub_key = None
@@ -46,10 +47,6 @@ def test_post_authority(client, auth_id=auth_id):
   )
   assert response.status == falcon.HTTP_CREATED
   assert response.headers['location'] == '/authorities/' + auth_id
-
-def test_stress_post_authority(client):
-  for i in range(10000):
-    test_post_authority(client, auth_id=random_uuid())
 
 @pytest.mark.dependency(depends=['test_post_authority'])
 def test_post_authority_duplicate(client):
@@ -135,7 +132,7 @@ def test_post_user(client):
   location = response.headers['location'].split('/')
   assert location[1] == 'usercerts'
   assert location[2] == body['user_id']
-  assert location[3] == sshpubkeys.SSHKey(body['key.pub']).hash()
+  assert location[3] == sshpubkeys.SSHKey(body['key.pub']).hash_md5()
 
 @pytest.mark.dependency(depends=['test_post_user'])
 def test_get_user(client):
@@ -170,7 +167,7 @@ def test_post_second_cert_same_user(client):
   location = response.headers['location'].split('/')
   assert location[1] == 'usercerts'
   assert location[2] == user_id
-  assert location[3] == sshpubkeys.SSHKey(pub_key).hash()
+  assert location[3] == sshpubkeys.SSHKey(pub_key).hash_md5()
 
 def test_post_user_unknown_auth(client):
   body = user_request(auth=random_uuid())
@@ -288,15 +285,18 @@ def test_post_token_and_host(client):
   assert location[2] == host_id
   assert location[3] == host_fingerprint
 
-def test_stress_post_token_same_host_id(client):
+def test_stress_post_token_and_host(client):
   my_auth_id = random_uuid()
   test_post_authority(client, my_auth_id)
-  for i in range(10000):
+  # Generate a single RSA key pair and reuse it - it takes a few seconds.
+  key = RSA.generate(2048)
+  pub_key = key.publickey().exportKey('OpenSSH')
+  fingerprint = sshpubkeys.SSHKey(pub_key).hash_md5()
+  # Should do about 15 iterations/second, so only do 4 seconds worth.
+  start = time.time()
+  for i in range(60):
     hid = random_uuid()
-    key = RSA.generate(2048)
-    pub_key = key.publickey().exportKey('OpenSSH')
-    fingerprint = sshpubkeys.SSHKey(key).hash()
-    token = token_request(auth=auth_id, host=hid)
+    token = token_request(auth=my_auth_id, host=hid)
     response = client.simulate_post(
       '/hosttokens',
       body=json.dumps(token)
@@ -305,6 +305,7 @@ def test_stress_post_token_same_host_id(client):
     assert 'location' in response.headers
     location_path = response.headers['location'].split('/')
     assert location_path[1] == 'hosttokens'
+    token_id = location_path[-1]
     # Verify that it's a valid UUID
     uuid.UUID(token_id, version=4)
     host = host_request(token_id, host=hid, pub_key=pub_key)
@@ -316,9 +317,9 @@ def test_stress_post_token_same_host_id(client):
     assert 'location' in response.headers
     location = response.headers['location'].split('/')
     assert location[1] == 'hostcerts'
-    assert location[2] == host_id
+    assert location[2] == hid
     assert location[3] == fingerprint
-
+  assert time.time() - start < 5
 
 @pytest.mark.dependency(depends=['test_post_token_and_host'])
 def test_post_token_same_host_id(client):
