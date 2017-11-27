@@ -284,6 +284,18 @@ def test_post_token_and_host(client):
   assert location[1] == 'hostcerts'
   assert location[2] == host_id
   assert location[3] == host_fingerprint
+  # Re-trying the same exact calls returns identical results
+  response = client.simulate_post(
+    '/hostcerts',
+    body=json.dumps(host)
+  )
+  assert response.status == falcon.HTTP_CREATED
+  assert 'location' in response.headers
+  location = response.headers['location'].split('/')
+  assert location[1] == 'hostcerts'
+  assert location[2] == host_id
+  assert location[3] == host_fingerprint
+
 
 def test_stress_post_token_and_host(client):
   my_auth_id = random_uuid()

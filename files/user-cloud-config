@@ -9,6 +9,7 @@ write_files:
     permissions: '0700'
     owner: root:root
     content: |
+        print 'Importing packages'
         import json
         import requests
         import os
@@ -27,7 +28,9 @@ write_files:
           assert 'uuid' in metadata
           assert 'project_id' in metadata
           return str(uuid.UUID(metadata['uuid'], version=4)), str(uuid.UUID(metadata['project_id'], version=4))
+        print 'Getting vendordata from ConfigDrive'
         vendordata = getVendordataFromConfigDrive()
+        print 'Getting instance and project IDs'
         instance_id, project_id = getInstanceAndProjectIdFromConfigDrive()
         assert 'tatu' in vendordata
         tatu = vendordata['tatu']
@@ -37,7 +40,7 @@ write_files:
         principals = tatu['principals'].split(',')
         with open('/etc/ssh/ssh_host_rsa_key.pub', 'r') as f:
           host_key_pub = f.read()
-        server = 'http://172.24.4.1:18321'
+        server = 'http://172.24.4.1:18322'
         hostcert_request = {
           'token_id': tatu['token'],
           'host_id': instance_id,
@@ -54,10 +57,12 @@ write_files:
           server + '/hostcerts',
           data=json.dumps(hostcert_request)
         )
+        print 'Got the host certificate: {}'.format(response.content)
         assert response.status_code == 201
         assert 'location' in response.headers
         location = response.headers['location']
-        response = requests.get(server + location)
+        # No need to GET the host cert - it's returned in the POST
+        #response = requests.get(server + location)
         hostcert = json.loads(response.content)
         assert 'host_id' in hostcert
         assert hostcert['host_id'] == instance_id

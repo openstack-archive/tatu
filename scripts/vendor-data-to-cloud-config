@@ -7,7 +7,4 @@ import yaml
 with open(sys.argv[1], 'r') as f:
     js = json.loads(f.read())
 
-# save to file:
-#with open(sys.argv[2], 'w') as f:
-#    f.write(js['cloud-init'])
 print js['cloud-init']

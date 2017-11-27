@@ -115,6 +115,14 @@ class UserCert(object):
     resp.body = json.dumps(body)
     resp.status = falcon.HTTP_OK
 
+def hostToJson(host):
+  return json.dumps({
+    'host_id': host.host_id,
+    'fingerprint': host.fingerprint,
+    'auth_id': host.auth_id,
+    'key-cert.pub': host.cert,
+  })
+
 class HostCerts(object):
 
   @falcon.before(validate)
@@ -130,6 +138,7 @@ class HostCerts(object):
       )
     except KeyError as e:
       raise falcon.HTTPBadRequest(str(e))
+    resp.body = hostToJson(host)
     resp.status = falcon.HTTP_201
     resp.location = '/hostcerts/' + host.host_id + '/' + host.fingerprint
 
@@ -141,13 +150,7 @@ class HostCert(object):
     if host is None:
       resp.status = falcon.HTTP_NOT_FOUND
       return
-    body = {
-      'host_id': host.host_id,
-      'fingerprint': host.fingerprint,
-      'auth_id': host.auth_id,
-      'key-cert.pub': host.cert,
-    }
-    resp.body = json.dumps(body)
+    resp.body = hostToJson(host)
     resp.status = falcon.HTTP_OK
 
 class Tokens(object):

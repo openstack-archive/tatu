@@ -6,7 +6,7 @@ from Crypto.PublicKey import RSA
 import sshpubkeys
 import uuid
 
-server = 'http://127.0.0.1:18321'
+server = 'http://172.24.4.1:18322'
 
 def vendordata_request(instance_id, project_id, hostname):
   return {
@@ -44,7 +44,7 @@ def test_host_certificate_generation():
   key = RSA.generate(2048)
   pub_key = key.publickey().exportKey('OpenSSH')
   fingerprint = sshpubkeys.SSHKey(pub_key).hash_md5()
-  for i in range(100):
+  for i in range(10):
     instance_id = random_uuid()
     hostname = 'host{}'.format(i)
     # Simulate Nova's separate requests for each version of metadata API
