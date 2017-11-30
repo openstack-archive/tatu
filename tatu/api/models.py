@@ -34,10 +34,10 @@ def validate(req, resp, resource, params):
 
 class Logger(object):
   def __init__(self):
-    self.logger = logging.getLogger('gunicorn.error')
+    self.logger = logging.getLogger(__name__)
 
   def process_resource(self, req, resp, resource, params):
-    self.logger.debug('Received request {0} {1}'.format(req.method, req.relative_uri))
+    self.logger.debug('Received request {0} {1} with headers {2}'.format(req.method, req.relative_uri, req.headers))
 
   def process_response(self, req, resp, resource, params):
     self.logger.debug(

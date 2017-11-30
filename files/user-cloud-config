@@ -54,7 +54,7 @@ write_files:
           # 1) 169.254.169.254 if there's a SSHaaS-proxy; OR
           # 2) the real address of the API, possibly supplied in the vendordata and
           #    still requiring routing and SNAT or DNAT.
-          server + '/hostcerts',
+          server + '/noauth/hostcerts',
           data=json.dumps(hostcert_request)
         )
         print 'Got the host certificate: {}'.format(response.content)

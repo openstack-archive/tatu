@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+import json
+import requests
+import sys
+import uuid
+
+server = 'http://172.24.4.1:18322'
+auth_id = str(uuid.UUID(sys.argv[1], version=4))
+response = requests.post(
+    server + '/authorities',
+    data=json.dumps({'auth_id': auth_id})
+)
+assert response.status_code == 201
+assert 'location' in response.headers
+print response.headers['location']
+assert response.headers['location'] == '/authorities/' + auth_id

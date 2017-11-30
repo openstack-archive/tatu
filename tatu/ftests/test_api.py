@@ -44,7 +44,7 @@ def test_host_certificate_generation():
   key = RSA.generate(2048)
   pub_key = key.publickey().exportKey('OpenSSH')
   fingerprint = sshpubkeys.SSHKey(pub_key).hash_md5()
-  for i in range(10):
+  for i in range(1):
     instance_id = random_uuid()
     hostname = 'host{}'.format(i)
     # Simulate Nova's separate requests for each version of metadata API
@@ -73,7 +73,7 @@ def test_host_certificate_generation():
       assert vendordata['principals'] == 'admin'
 
     response = requests.post(
-      server + '/hostcerts',
+      server + '/noauth/hostcerts',
       data=json.dumps(host_request(token, instance_id, pub_key))
     )
     assert response.status_code == 201

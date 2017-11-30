@@ -17,3 +17,6 @@ def create_app(sa):
 
 def get_app():
   return create_app(SQLAlchemySessionManager())
+
+def main(global_config, **settings):
+  return create_app(SQLAlchemySessionManager())
