@@ -51,7 +51,7 @@ def createUserCert(session, user_id, auth_id, pub):
     fingerprint = sshpubkeys.SSHKey(pub).hash_md5()
     certRecord = session.query(UserCert).get([user_id, fingerprint])
     if certRecord is not None:
-      raise falcon.HTTPConflict('This public key is already signed.')
+      return certRecord
     cert = generateCert(auth.user_key, pub, principals='admin,root')
     if cert is None:
       raise falcon.HTTPInternalServerError("Failed to generate the certificate")
