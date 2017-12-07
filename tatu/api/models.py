@@ -69,9 +69,9 @@ class Authority(object):
     if auth is None:
       resp.status = falcon.HTTP_NOT_FOUND
       return
-    user_key = RSA.importKey(auth.user_key)
+    user_key = RSA.importKey(db.getAuthUserKey(auth))
     user_pub_key = user_key.publickey().exportKey('OpenSSH')
-    host_key = RSA.importKey(auth.host_key)
+    host_key = RSA.importKey(db.getAuthHostKey(auth))
     host_pub_key = host_key.publickey().exportKey('OpenSSH')
     body = {
       'auth_id': auth_id,

@@ -1,12 +1,13 @@
 from datetime import datetime
+import falcon
+import os
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import IntegrityError
-import falcon
 import sshpubkeys
-import uuid
-import os
+from tatu.castellan.utils import get_secret, store_secret
 from tatu.utils import generateCert,random_uuid
+import uuid
 from Crypto.PublicKey import RSA
 
 Base = declarative_base()
@@ -21,10 +22,20 @@ class Authority(Base):
 def getAuthority(session, auth_id):
   return session.query(Authority).get(auth_id)
 
+def getAuthUserKey(auth):
+  return get_secret(auth.user_key)
+
+def getAuthHostKey(auth):
+  return get_secret(auth.host_key)
+
 def createAuthority(session, auth_id):
+  user_key = RSA.generate(2048).exportKey('PEM')
+  user_secret_id = store_secret(user_key)
+  host_key = RSA.generate(2048).exportKey('PEM')
+  host_secret_id = store_secret(host_key)
   auth = Authority(auth_id=auth_id,
-                   user_key=RSA.generate(2048).exportKey('PEM'),
-                   host_key=RSA.generate(2048).exportKey('PEM'))
+                   user_key=user_secret_id,
+                   host_key=host_secret_id)
   session.add(auth)
   try:
     session.commit()
@@ -52,7 +63,7 @@ def createUserCert(session, user_id, auth_id, pub):
     certRecord = session.query(UserCert).get([user_id, fingerprint])
     if certRecord is not None:
       return certRecord
-    cert = generateCert(auth.user_key, pub, principals='admin,root')
+    cert = generateCert(get_secret(auth.user_key), pub, principals='admin,root')
     if cert is None:
       raise falcon.HTTPInternalServerError("Failed to generate the certificate")
     user = UserCert(
@@ -137,7 +148,7 @@ def createHostCert(session, token_id, host_id, pub):
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
       raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(auth.host_key, pub, hostname=token.hostname)
+    cert = generateCert(get_secret(auth.host_key), pub, hostname=token.hostname)
     if cert == '':
       raise falcon.HTTPInternalServerError("Failed to generate the certificate")
     host = HostCert(host_id=host_id,
