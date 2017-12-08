@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from Crypto.PublicKey import RSA
 import falcon
 import json
 import logging
 import uuid
-from Crypto.PublicKey import RSA
 
 from tatu.db import models as db
 

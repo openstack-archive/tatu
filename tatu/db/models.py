@@ -10,13 +10,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from Crypto.PublicKey import RSA
+from datetime import datetime
 import falcon
 import sqlalchemy as sa
-import sshpubkeys
-    from Crypto.PublicKey import RSA
-from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
+import sshpubkeys
 
 from tatu.castellano import get_secret, store_secret
 from tatu.utils import generateCert, random_uuid

@@ -9,14 +9,15 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+from Crypto.PublicKey import RSA
 import falcon
+from falcon import testing
 import json
 import pytest
 import sshpubkeys
 import time
 import uuid
-from Crypto.PublicKey import RSA
-from falcon import testing
 
 from tatu.api.app import create_app
 from tatu.db.persistence import SQLAlchemySessionManager

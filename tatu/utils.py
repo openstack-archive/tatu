@@ -12,6 +12,7 @@
 
 import os
 import subprocess
+from tempfile import NamedTemporaryFile
 import uuid
 
 
@@ -46,8 +47,6 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
         cert = ''
         with open(cert_file, 'r') as text_file:
             cert = text_file.read()
-    #except Exception as e:
-    #    print e
     finally:
         # Delete temporary files
         for file in [ca_file, pub_file, cert_file]:

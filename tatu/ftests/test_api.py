@@ -10,11 +10,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from Crypto.PublicKey import RSA
 import json
 import requests
 import sshpubkeys
 import uuid
-from Crypto.PublicKey import RSA
 
 from tatu.utils import random_uuid
 

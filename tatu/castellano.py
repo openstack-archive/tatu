@@ -91,6 +91,7 @@ castellan library, it is not meant for direct usage within tatu.
 
 class TatuKeyManager(KeyManager):
     """Tatu specific key manager
+
     This manager is a thin wrapper around the secret being stored. It is
     intended for backward compatible use only. It will not store keys
     or generate UUIDs but instead return the secret that is being stored.

@@ -10,15 +10,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import oslo_messaging
-import sys
-import time
-import uuid
 from oslo_config import cfg
 from oslo_log import log as logging
+import oslo_messaging
 from oslo_serialization import jsonutils
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
+import sys
+import time
+import uuid
 
 from tatu.db.models import createAuthority
 from tatu.db.persistence import get_url
@@ -65,7 +65,7 @@ class NotificationEndpoint(object):
 def main():
     logging.register_options(CONF)
     log_levels = logging.get_default_log_levels() + \
-                 ['tatu=DEBUG', '__main__=DEBUG']
+        ['tatu=DEBUG', '__main__=DEBUG']
     logging.set_defaults(default_log_levels=log_levels)
     logging.setup(CONF, DOMAIN)
 
