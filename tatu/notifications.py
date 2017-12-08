@@ -1,3 +1,15 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging
@@ -14,15 +26,15 @@ LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 DOMAIN = 'tatu'
 
-class NotificationEndpoint(object):
 
+class NotificationEndpoint(object):
     filter_rule = oslo_messaging.NotificationFilter(
         publisher_id='^identity.*',
         event_type='^identity.project.created')
 
     def __init__(self):
         self.engine = create_engine(get_url())
-        #Base.metadata.create_all(self.engine)
+        # Base.metadata.create_all(self.engine)
         self.Session = scoped_session(sessionmaker(self.engine))
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
@@ -46,12 +58,13 @@ class NotificationEndpoint(object):
         else:
             LOG.error("Status update or unknown")
 
+
 def main():
     logging.register_options(CONF)
     extra_log_level_defaults = ['tatu=DEBUG', '__main__=DEBUG']
     logging.set_defaults(
         default_log_levels=logging.get_default_log_levels() +
-        extra_log_level_defaults)
+                           extra_log_level_defaults)
     logging.setup(CONF, DOMAIN)
 
     transport = oslo_messaging.get_notification_transport(CONF)
@@ -73,6 +86,7 @@ def main():
         LOG.info("Stopping, be patient")
         server.stop()
         server.wait()
+
 
 if __name__ == "__main__":
     sys.exit(main())

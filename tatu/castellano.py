@@ -1,3 +1,15 @@
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
+
 from castellan.common.objects.passphrase import Passphrase
 from castellan.common.utils import credential_factory
 from castellan.key_manager import API
@@ -16,6 +28,7 @@ CONF.register_opts(opts, group='tatu')
 _context = None
 _api = None
 
+
 def validate_config():
     if CONF.tatu.use_barbican_key_manager:
         set_castellan_defaults(CONF)
@@ -23,17 +36,20 @@ def validate_config():
         set_castellan_defaults(CONF,
                                api_class='tatu.castellano.TatuKeyManager')
 
+
 def context():
     global _context
     if _context is None and CONF.tatu.use_barbican_key_manager:
         _context = credential_factory(conf=CONF)
     return _context
 
+
 def api():
     global _api
     if _api is None:
         _api = API()
-    return _api 
+    return _api
+
 
 def delete_secret(id, ctx=None):
     """delete a secret from the external key manager
@@ -42,6 +58,7 @@ def delete_secret(id, ctx=None):
                 this operation (defaults to the current context)
     """
     api().delete(ctx or context(), id)
+
 
 def get_secret(id, ctx=None):
     """get a secret associated with an id
@@ -52,6 +69,7 @@ def get_secret(id, ctx=None):
     key = api().get(ctx or context(), id)
     return key.get_encoded()
 
+
 def store_secret(secret, ctx=None):
     """store a secret and return its identifier
     :param secret: The secret to store, this should be a string
@@ -61,10 +79,13 @@ def store_secret(secret, ctx=None):
     key = Passphrase(secret)
     return api().store(ctx or context(), key)
 
+
 """
 This module contains the KeyManager class that will be used by the
 castellan library, it is not meant for direct usage within tatu.
 """
+
+
 class TatuKeyManager(KeyManager):
     """Tatu specific key manager
     This manager is a thin wrapper around the secret being stored. It is
@@ -73,6 +94,7 @@ class TatuKeyManager(KeyManager):
     This behavior allows Tatu to continue storing secrets in its database
     while using the Castellan key manager abstraction.
     """
+
     def __init__(self, configuration=None):
         pass
 
