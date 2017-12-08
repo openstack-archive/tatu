@@ -178,14 +178,8 @@ def test_post_user_unknown_auth(client):
   assert response.status == falcon.HTTP_NOT_FOUND
 
 @pytest.mark.dependency(depends=['test_post_user'])
-def test_post_same_user_same_key_fails(client):
-  # Show that using the same user ID and public key fails.
-  body = user_request()
-  response = client.simulate_post(
-    '/usercerts',
-    body=json.dumps(body)
-  )
-  assert response.status == falcon.HTTP_CONFLICT
+def test_post_same_user_and_key_returns_same_result(client):
+  test_post_user(client)
 
 def token_request(auth=auth_id, host=host_id):
   return {

@@ -5,7 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.exc import IntegrityError
 import sshpubkeys
-from tatu.castellan.utils import get_secret, store_secret
+from tatu.castellano import get_secret, store_secret
 from tatu.utils import generateCert,random_uuid
 import uuid
 from Crypto.PublicKey import RSA
