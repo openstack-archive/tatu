@@ -11,9 +11,10 @@
 #    under the License.
 
 import falcon
-import models
 import os.path
 from oslo_config import cfg
+
+import models
 from tatu.castellano import validate_config as validate_castellan_config
 from tatu.db.persistence import SQLAlchemySessionManager
 

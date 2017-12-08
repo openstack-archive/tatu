@@ -10,17 +10,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from datetime import datetime
 import falcon
 import os
 import sqlalchemy as sa
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.exc import IntegrityError
 import sshpubkeys
-from tatu.castellano import get_secret, store_secret
-from tatu.utils import generateCert, random_uuid
 import uuid
 from Crypto.PublicKey import RSA
+from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.declarative import declarative_base
+
+from tatu.castellano import get_secret, store_secret
+from tatu.utils import generateCert, random_uuid
 
 Base = declarative_base()
 
@@ -78,14 +79,17 @@ def createUserCert(session, user_id, auth_id, pub):
     # Retrieve the authority's private key and generate the certificate
     auth = getAuthority(session, auth_id)
     if auth is None:
-        raise falcon.HTTPNotFound(description='No Authority found with that ID')
+        raise falcon.HTTPNotFound(
+            description='No Authority found with that ID')
     fingerprint = sshpubkeys.SSHKey(pub).hash_md5()
     certRecord = session.query(UserCert).get([user_id, fingerprint])
     if certRecord is not None:
         return certRecord
-    cert = generateCert(get_secret(auth.user_key), pub, principals='admin,root')
+    cert = generateCert(get_secret(auth.user_key), pub,
+                        principals='admin,root')
     if cert is None:
-        raise falcon.HTTPInternalServerError("Failed to generate the certificate")
+        raise falcon.HTTPInternalServerError(
+            "Failed to generate the certificate")
     user = UserCert(
         user_id=user_id,
         fingerprint=fingerprint,
@@ -114,7 +118,8 @@ def createToken(session, host_id, auth_id, hostname):
     # Validate the certificate authority
     auth = getAuthority(session, auth_id)
     if auth is None:
-        raise falcon.HTTPNotFound(description='No Authority found with that ID')
+        raise falcon.HTTPNotFound(
+            description='No Authority found with that ID')
     # Check whether a token was already created for this host_id
     try:
         token = session.query(Token).filter(Token.host_id == host_id).one()
@@ -152,12 +157,14 @@ def createHostCert(session, token_id, host_id, pub):
     if token is None:
         raise falcon.HTTPNotFound(description='No Token found with that ID')
     if token.host_id != host_id:
-        raise falcon.HTTPConflict(description='The token is not valid for this instance ID')
+        raise falcon.HTTPConflict(
+            description='The token is not valid for this instance ID')
     fingerprint = sshpubkeys.SSHKey(pub).hash_md5()
 
     if token.used:
         if token.fingerprint_used != fingerprint:
-            raise falcon.HTTPConflict(description='The token was previously used with a different public key')
+            raise falcon.HTTPConflict(
+                description='The token was previously used with a different public key')
         # The token was already used for same host and pub key. Return record.
         host = session.query(HostCert).get([host_id, fingerprint])
         if host is None:
@@ -165,17 +172,21 @@ def createHostCert(session, token_id, host_id, pub):
                 description='The token was used, but no corresponding Host record was found.')
         if host.token_id == token_id:
             return host
-        raise falcon.HTTPConflict(description='The presented token was previously used')
+        raise falcon.HTTPConflict(
+            description='The presented token was previously used')
 
     auth = getAuthority(session, token.auth_id)
     if auth is None:
-        raise falcon.HTTPNotFound(description='No Authority found with that ID')
+        raise falcon.HTTPNotFound(
+            description='No Authority found with that ID')
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
         raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(get_secret(auth.host_key), pub, hostname=token.hostname)
+    cert = generateCert(get_secret(auth.host_key), pub,
+                        hostname=token.hostname)
     if cert == '':
-        raise falcon.HTTPInternalServerError("Failed to generate the certificate")
+        raise falcon.HTTPInternalServerError(
+            "Failed to generate the certificate")
     host = HostCert(host_id=host_id,
                     fingerprint=fingerprint,
                     auth_id=token.auth_id,

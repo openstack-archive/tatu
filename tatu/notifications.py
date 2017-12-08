@@ -10,17 +10,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import oslo_messaging
+import sys
+import time
+import uuid
 from oslo_config import cfg
 from oslo_log import log as logging
-import oslo_messaging
 from oslo_serialization import jsonutils
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-import sys
+
 from tatu.db.models import Base, createAuthority
 from tatu.db.persistence import get_url
-import time
-import uuid
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -52,7 +53,9 @@ class NotificationEndpoint(object):
                 auth_id = str(uuid.UUID(proj_id, version=4))
                 createAuthority(se, auth_id)
             except Exception as e:
-                LOG.error("Failed to create Tatu CA for new project with ID {} due to exception {}".format(proj_id, e))
+                LOG.error(
+                    "Failed to create Tatu CA for new project with ID {} due to exception {}".format(
+                        proj_id, e))
                 se.rollback()
                 self.Session.remove()
         else:

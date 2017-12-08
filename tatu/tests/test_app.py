@@ -9,18 +9,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import json
 import falcon
-from falcon import testing
+import json
 import pytest
-import uuid
-from tatu.api.app import create_app
-from tatu.db.persistence import SQLAlchemySessionManager
-from tatu.db.models import Authority
-from tatu.utils import random_uuid
-from Crypto.PublicKey import RSA
 import sshpubkeys
 import time
+import uuid
+from Crypto.PublicKey import RSA
+from falcon import testing
+
+from tatu.api.app import create_app
+from tatu.db.models import Authority
+from tatu.db.persistence import SQLAlchemySessionManager
+from tatu.utils import random_uuid
 
 
 @pytest.fixture
@@ -161,7 +162,8 @@ def test_post_user(client):
 
 @pytest.mark.dependency(depends=['test_post_user'])
 def test_get_user(client):
-    response = client.simulate_get('/usercerts/' + user_id + '/' + user_fingerprint)
+    response = client.simulate_get(
+        '/usercerts/' + user_id + '/' + user_fingerprint)
     assert response.status == falcon.HTTP_OK
     body = json.loads(response.content)
     assert 'user_id' in body
@@ -172,7 +174,8 @@ def test_get_user(client):
 
 
 def test_get_user_doesnt_exist(client):
-    response = client.simulate_get('/usercerts/' + random_uuid() + '/' + user_fingerprint)
+    response = client.simulate_get(
+        '/usercerts/' + random_uuid() + '/' + user_fingerprint)
     assert response.status == falcon.HTTP_NOT_FOUND
 
 
@@ -384,7 +387,8 @@ def test_post_token_same_host_id(client):
 
 @pytest.mark.dependency(depends=['test_post_token_and_host'])
 def test_get_host(client):
-    response = client.simulate_get('/hostcerts/' + host_id + '/' + host_fingerprint)
+    response = client.simulate_get(
+        '/hostcerts/' + host_id + '/' + host_fingerprint)
     assert response.status == falcon.HTTP_OK
     body = json.loads(response.content)
     assert 'host_id' in body
@@ -397,7 +401,8 @@ def test_get_host(client):
 
 
 def test_get_host_doesnt_exist(client):
-    response = client.simulate_get('/hostcerts/' + random_uuid() + '/' + host_fingerprint)
+    response = client.simulate_get(
+        '/hostcerts/' + random_uuid() + '/' + host_fingerprint)
     assert response.status == falcon.HTTP_NOT_FOUND
 
 

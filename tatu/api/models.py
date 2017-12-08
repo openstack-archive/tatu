@@ -14,8 +14,9 @@ import falcon
 import json
 import logging
 import uuid
-from tatu.db import models as db
 from Crypto.PublicKey import RSA
+
+from tatu.db import models as db
 
 
 def validate_uuid(map, key):
@@ -29,7 +30,8 @@ def validate_uuid(map, key):
 
 
 def validate_uuids(req, params):
-    id_keys = ['token_id', 'auth_id', 'host_id', 'user_id', 'project-id', 'instance-id']
+    id_keys = ['token_id', 'auth_id', 'host_id', 'user_id', 'project-id',
+               'instance-id']
     if req.method in ('POST', 'PUT'):
         for key in id_keys:
             if key in req.body:
@@ -53,7 +55,10 @@ class Logger(object):
         self.logger = logging.getLogger(__name__)
 
     def process_resource(self, req, resp, resource, params):
-        self.logger.debug('Received request {0} {1} with headers {2}'.format(req.method, req.relative_uri, req.headers))
+        self.logger.debug(
+            'Received request {0} {1} with headers {2}'.format(req.method,
+                                                               req.relative_uri,
+                                                               req.headers))
 
     def process_response(self, req, resp, resource, params):
         self.logger.debug(

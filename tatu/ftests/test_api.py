@@ -11,12 +11,13 @@
 #    under the License.
 
 import json
-import requests
 import os
-from tatu.utils import random_uuid
-from Crypto.PublicKey import RSA
+import requests
 import sshpubkeys
 import uuid
+from Crypto.PublicKey import RSA
+
+from tatu.utils import random_uuid
 
 server = 'http://172.24.4.1:18322'
 
@@ -68,7 +69,8 @@ def test_host_certificate_generation():
         for j in range(3):
             response = requests.post(
                 server + '/novavendordata',
-                data=json.dumps(vendordata_request(instance_id, project_id, hostname))
+                data=json.dumps(
+                    vendordata_request(instance_id, project_id, hostname))
             )
             assert response.status_code == 201
             assert 'location' in response.headers
