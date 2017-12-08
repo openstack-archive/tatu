@@ -11,8 +11,9 @@
 #    under the License.
 
 import os
+import shutil
 import subprocess
-from tempfile import NamedTemporaryFile
+from tempfile import mkdtemp
 import uuid
 
 
@@ -24,10 +25,10 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
     # Temporarily write the authority private key, entity public key to files
     prefix = uuid.uuid4().hex
     # Todo: make the temporary directory configurable or secure it.
-    dir = '/tmp/sshaas'
-    ca_file = ''.join([dir, prefix])
-    pub_file = ''.join([dir, prefix, '.pub'])
-    cert_file = ''.join([dir, prefix, '-cert.pub'])
+    temp_dir = mkdtemp()
+    ca_file = '/'.join([temp_dir, 'ca_key'])
+    pub_file = '/'.join([temp_dir, 'entity.pub'])
+    cert_file = '/'.join([temp_dir, 'entity-cert.pub'])
     cert = ''
     try:
         fd = os.open(ca_file, os.O_WRONLY | os.O_CREAT, 0o600)
@@ -44,15 +45,8 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
             args.extend(['-h', pub_file])
         subprocess.check_output(args, stderr=subprocess.STDOUT)
         # Read the contents of the certificate file
-        cert = ''
         with open(cert_file, 'r') as text_file:
             cert = text_file.read()
     finally:
-        # Delete temporary files
-        for file in [ca_file, pub_file, cert_file]:
-            try:
-                os.remove(file)
-                pass
-            except Exception:
-                pass
+        shutil.rmtree(temp_dir)
         return cert
