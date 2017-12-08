@@ -24,8 +24,7 @@ def get_url():
 
 class SQLAlchemySessionManager:
     """
-    Create a scoped session for every request and close it when the request
-    ends.
+    Create scoped session for every request and close it when the request ends
     """
 
     def __init__(self):

@@ -20,7 +20,7 @@ from oslo_serialization import jsonutils
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-from tatu.db.models import Base, createAuthority
+from tatu.db.models import createAuthority
 from tatu.db.persistence import get_url
 
 LOG = logging.getLogger(__name__)
@@ -54,8 +54,8 @@ class NotificationEndpoint(object):
                 createAuthority(se, auth_id)
             except Exception as e:
                 LOG.error(
-                    "Failed to create Tatu CA for new project with ID {} due to exception {}".format(
-                        proj_id, e))
+                    "Failed to create Tatu CA for new project with ID {} "
+                    "due to exception {}".format(proj_id, e))
                 se.rollback()
                 self.Session.remove()
         else:
@@ -65,9 +65,8 @@ class NotificationEndpoint(object):
 def main():
     logging.register_options(CONF)
     extra_log_level_defaults = ['tatu=DEBUG', '__main__=DEBUG']
-    logging.set_defaults(
-        default_log_levels=logging.get_default_log_levels() +
-                           extra_log_level_defaults)
+    logging.set_defaults(default_log_levels=logging.get_default_log_levels() +
+                                            extra_log_level_defaults)
     logging.setup(CONF, DOMAIN)
 
     transport = oslo_messaging.get_notification_transport(CONF)

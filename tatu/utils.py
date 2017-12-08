@@ -20,7 +20,7 @@ def random_uuid():
 
 
 def generateCert(auth_key, entity_key, hostname=None, principals='root'):
-    # Temporarily write the authority private key and entity public key to files
+    # Temporarily write the authority private key, entity public key to files
     prefix = uuid.uuid4().hex
     # Todo: make the temporary directory configurable or secure it.
     dir = '/tmp/sshaas'

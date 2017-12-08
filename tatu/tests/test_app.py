@@ -19,7 +19,6 @@ from Crypto.PublicKey import RSA
 from falcon import testing
 
 from tatu.api.app import create_app
-from tatu.db.models import Authority
 from tatu.db.persistence import SQLAlchemySessionManager
 from tatu.utils import random_uuid
 

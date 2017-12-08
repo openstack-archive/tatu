@@ -53,6 +53,7 @@ def api():
 
 def delete_secret(id, ctx=None):
     """delete a secret from the external key manager
+
     :param id: The identifier of the secret to delete
     :param ctx: The context, and associated authentication, to use with
                 this operation (defaults to the current context)
@@ -62,6 +63,7 @@ def delete_secret(id, ctx=None):
 
 def get_secret(id, ctx=None):
     """get a secret associated with an id
+
     :param id: The identifier of the secret to retrieve
     :param ctx: The context, and associated authentication, to use with
                 this operation (defaults to the current context)
@@ -72,6 +74,7 @@ def get_secret(id, ctx=None):
 
 def store_secret(secret, ctx=None):
     """store a secret and return its identifier
+
     :param secret: The secret to store, this should be a string
     :param ctx: The context, and associated authentication, to use with
                 this operation (defaults to the current context)
@@ -107,7 +110,8 @@ class TatuKeyManager(KeyManager):
 
     def store(self, context, key, expiration=None, **kwargs):
         """store a key
-        in normal usage a store_key will return the UUID of the key as
+
+        In normal usage a store_key will return the UUID of the key as
         dictated by the key manager. Tatu would then store this UUID in
         its database to use for retrieval. As tatu is not actually using
         a key manager in this context it will return the key's payload for
@@ -117,7 +121,8 @@ class TatuKeyManager(KeyManager):
 
     def get(self, context, key_id, **kwargs):
         """get a key
-        since tatu is not actually storing key UUIDs the key_id to this
+
+        Since tatu is not actually storing key UUIDs the key_id to this
         function should actually be the key payload. this function will
         simply return a new TatuKey based on that value.
         """
@@ -125,7 +130,8 @@ class TatuKeyManager(KeyManager):
 
     def delete(self, context, key_id, **kwargs):
         """delete a key
-        as there is no external key manager, this function will not
+
+        As there is no external key manager, this function will not
         perform any external actions. therefore, it won't change anything.
         """
         pass

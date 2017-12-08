@@ -21,7 +21,7 @@ from tatu.db import models as db
 
 def validate_uuid(map, key):
     try:
-        # Verify it's a valid UUID, then convert to canonical string representation
+        # Verify UUID is valid, then convert to canonical string representation
         # to avoiid DB errors.
         map[key] = str(uuid.UUID(map[key], version=4))
     except ValueError:
@@ -55,10 +55,8 @@ class Logger(object):
         self.logger = logging.getLogger(__name__)
 
     def process_resource(self, req, resp, resource, params):
-        self.logger.debug(
-            'Received request {0} {1} with headers {2}'.format(req.method,
-                                                               req.relative_uri,
-                                                               req.headers))
+        self.logger.debug('Received request {0} {1} with headers {2}'
+                          .format(req.method, req.relative_uri, req.headers))
 
     def process_response(self, req, resp, resource, params):
         self.logger.debug(
@@ -150,7 +148,7 @@ class HostCerts(object):
     @falcon.before(validate)
     def on_post(self, req, resp):
         # Note that we could have found the host_id using the token_id.
-        # But requiring the host_id makes it a little harder to steal the token.
+        # But requiring the host_id makes it a bit harder to steal the token.
         try:
             host = db.createHostCert(
                 self.session,
