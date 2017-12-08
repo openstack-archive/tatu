@@ -18,7 +18,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from tatu.db.models import createAuthority
 from tatu.db.persistence import get_url
@@ -64,9 +64,9 @@ class NotificationEndpoint(object):
 
 def main():
     logging.register_options(CONF)
-    extra_log_level_defaults = ['tatu=DEBUG', '__main__=DEBUG']
-    logging.set_defaults(default_log_levels=logging.get_default_log_levels() +
-                                            extra_log_level_defaults)
+    log_levels = logging.get_default_log_levels() + \
+                 ['tatu=DEBUG', '__main__=DEBUG']
+    logging.set_defaults(default_log_levels=log_levels)
     logging.setup(CONF, DOMAIN)
 
     transport = oslo_messaging.get_notification_transport(CONF)

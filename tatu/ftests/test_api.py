@@ -11,7 +11,6 @@
 #    under the License.
 
 import json
-import os
 import requests
 import sshpubkeys
 import uuid

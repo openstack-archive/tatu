@@ -11,11 +11,9 @@
 #    under the License.
 
 import falcon
-import os
 import sqlalchemy as sa
 import sshpubkeys
-import uuid
-from Crypto.PublicKey import RSA
+    from Crypto.PublicKey import RSA
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
@@ -125,7 +123,7 @@ def createToken(session, host_id, auth_id, hostname):
         token = session.query(Token).filter(Token.host_id == host_id).one()
         if token is not None:
             return token
-    except:
+    except Exception:
         pass
 
     token = Token(host_id=host_id,
@@ -164,12 +162,12 @@ def createHostCert(session, token_id, host_id, pub):
     if token.used:
         if token.fingerprint_used != fingerprint:
             raise falcon.HTTPConflict(
-                description='The token was previously used with a different public key')
+                description='Token already signed a different public key')
         # The token was already used for same host and pub key. Return record.
         host = session.query(HostCert).get([host_id, fingerprint])
         if host is None:
             raise falcon.HTTPInternalServerError(
-                description='The token was used, but no corresponding Host record was found.')
+                description='Token already used, but Host record not found.')
         if host.token_id == token_id:
             return host
         raise falcon.HTTPConflict(

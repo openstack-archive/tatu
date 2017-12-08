@@ -104,7 +104,7 @@ class Authority(object):
 class UserCerts(object):
     @falcon.before(validate)
     def on_post(self, req, resp):
-        # TODO: validation
+        # TODO(pino): validation
         try:
             user = db.createUserCert(
                 self.session,

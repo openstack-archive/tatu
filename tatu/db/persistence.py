@@ -22,7 +22,7 @@ def get_url():
     # return os.getenv("DATABASE_URL", "sqlite:///:memory:")
 
 
-class SQLAlchemySessionManager:
+class SQLAlchemySessionManager(object):
     """
     Create scoped session for every request and close it when the request ends
     """
