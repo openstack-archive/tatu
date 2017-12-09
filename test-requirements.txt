@@ -5,6 +5,9 @@
 # Install bounded pep8/pyflakes first, then let flake8 install
 hacking<0.11,>=0.10.0
 
+sshpubkeys>=2.2.0
+pytest>=3.3.1
+pycrypto>=2.6.1
 coverage>=3.6 # Apache-2.0
 mock>=2.0 # BSD
 os-testr>=0.7.0 # Apache-2.0
