@@ -12,8 +12,17 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import pbr.version
+"""
+test_tatu
+----------------------------------
+
+Tests for `tatu` module.
+"""
+
+from tatu.tests import base
 
 
-__version__ = pbr.version.VersionInfo(
-    'tatu').version_string()
+class TestTatu(base.TestCase):
+
+    def test_something(self):
+        pass
