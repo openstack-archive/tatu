@@ -17,6 +17,7 @@ from oslo_serialization import jsonutils
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import sys
+from tatu import config # sets up all required config
 import time
 import uuid
 
@@ -24,8 +25,6 @@ from tatu.db.models import createAuthority
 from tatu.db.persistence import get_url
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
-DOMAIN = 'tatu'
 
 
 class NotificationEndpoint(object):
@@ -47,7 +46,8 @@ class NotificationEndpoint(object):
 
         if event_type == 'identity.project.created':
             proj_id = payload.get('resource_info')
-            LOG.debug("New project created {}".format(proj_id))
+            LOG.debug("New project with ID {} created "
+                      "in Keystone".format(proj_id))
             se = self.Session()
             try:
                 auth_id = str(uuid.UUID(proj_id, version=4))
@@ -63,13 +63,7 @@ class NotificationEndpoint(object):
 
 
 def main():
-    logging.register_options(CONF)
-    log_levels = logging.get_default_log_levels() + \
-        ['tatu=DEBUG', '__main__=DEBUG']
-    logging.set_defaults(default_log_levels=log_levels)
-    logging.setup(CONF, DOMAIN)
-
-    transport = oslo_messaging.get_notification_transport(CONF)
+    transport = oslo_messaging.get_notification_transport(cfg.CONF)
     targets = [oslo_messaging.Target(topic='notifications')]
     endpoints = [NotificationEndpoint()]
 
@@ -78,8 +72,7 @@ def main():
                                                       endpoints,
                                                       executor='threading')
 
-    LOG.info("Starting")
-    LOG.debug("Test debug log statement")
+    LOG.info("Starting notification watcher daemon")
     server.start()
     try:
         while True:

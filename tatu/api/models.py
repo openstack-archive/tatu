@@ -215,7 +215,7 @@ class NovaVendorData(object):
         if auth is None:
             resp.status = falcon.HTTP_NOT_FOUND
             return
-        key = RSA.importKey(auth.user_key)
+        key = RSA.importKey(db.getAuthUserKey(auth))
         pub_key = key.publickey().exportKey('OpenSSH')
         vendordata = {
             'token': token.token_id,

@@ -83,7 +83,7 @@ def createUserCert(session, user_id, auth_id, pub):
     certRecord = session.query(UserCert).get([user_id, fingerprint])
     if certRecord is not None:
         return certRecord
-    cert = generateCert(get_secret(auth.user_key), pub,
+    cert = generateCert(getAuthUserKey(auth), pub,
                         principals='admin,root')
     if cert is None:
         raise falcon.HTTPInternalServerError(
@@ -180,7 +180,7 @@ def createHostCert(session, token_id, host_id, pub):
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
         raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(get_secret(auth.host_key), pub,
+    cert = generateCert(getAuthHostKey(auth), pub,
                         hostname=token.hostname)
     if cert == '':
         raise falcon.HTTPInternalServerError(

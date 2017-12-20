@@ -15,14 +15,8 @@ import os.path
 from oslo_config import cfg
 
 import models
-from tatu.castellano import validate_config as validate_castellan_config
+from tatu import config # sets up all required config
 from tatu.db.persistence import SQLAlchemySessionManager
-
-validate_castellan_config()
-fname = 'tatu.conf'
-CONF = cfg.CONF
-if os.path.isfile(fname):
-    CONF(default_config_files=[fname])
 
 
 def create_app(sa):

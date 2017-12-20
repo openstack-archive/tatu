@@ -16,15 +16,10 @@ from castellan.key_manager import API
 from castellan.key_manager.key_manager import KeyManager
 from castellan.options import set_defaults as set_castellan_defaults
 from oslo_config import cfg
+from oslo_log import log as logging
 
-opts = [
-    cfg.BoolOpt('use_barbican_key_manager', default=False,
-                help='Enable the usage of the OpenStack Key Management '
-                     'service provided by barbican.'),
-]
+LOG = logging.getLogger(__name__)
 
-CONF = cfg.CONF
-CONF.register_opts(opts, group='tatu')
 _context = None
 _api = None
 
