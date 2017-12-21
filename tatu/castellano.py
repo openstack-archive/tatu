@@ -14,7 +14,6 @@ from castellan.common.objects.passphrase import Passphrase
 from castellan.common.utils import credential_factory
 from castellan.key_manager import API
 from castellan.key_manager.key_manager import KeyManager
-from castellan.options import set_defaults as set_castellan_defaults
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -24,18 +23,10 @@ _context = None
 _api = None
 
 
-def validate_config():
-    if CONF.tatu.use_barbican_key_manager:
-        set_castellan_defaults(CONF)
-    else:
-        set_castellan_defaults(CONF,
-                               api_class='tatu.castellano.TatuKeyManager')
-
-
 def context():
     global _context
-    if _context is None and CONF.tatu.use_barbican_key_manager:
-        _context = credential_factory(conf=CONF)
+    if _context is None and cfg.CONF.tatu.use_barbican_key_manager:
+        _context = credential_factory(conf=cfg.CONF)
     return _context
 
 

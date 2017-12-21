@@ -18,7 +18,6 @@ pyramid>=1.9.1 # BSD-derived (http://www.repoze.org/LICENSE.txt)
 Paste # MIT
 dogpile.cache
 python-memcached
-oslo_concurrency
 eventlet
 vine
 python-designateclient
