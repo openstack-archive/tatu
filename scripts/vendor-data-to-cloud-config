@@ -11,12 +11,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
+import argparse
 import json
+import sys
 import yaml
 
+parser = argparse.ArgumentParser(
+    description='Convert a single-line static vendor data file from'
+                '\n{"cloud-init": <single-line cloud-config>}'
+                '\nto multi-line cloud-config.',
+    formatter_class=argparse.RawTextHelpFormatter
+)
+parser.add_argument('input_file', type=str)
+args = parser.parse_args()
+
 # load from file:
-with open(sys.argv[1], 'r') as f:
+with open(args.input_file, 'r') as f:
     js = json.loads(f.read())
 
 print js['cloud-init']
