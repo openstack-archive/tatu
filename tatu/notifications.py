@@ -62,6 +62,9 @@ class NotificationEndpoint(object):
             LOG.error("Status update or unknown")
 
 
+# TODO(pino): listen to host delete notifications, clean up PATs and DNS
+# TODO(pino): Listen to user deletions and revoke their certs
+
 def main():
     transport = oslo_messaging.get_notification_transport(cfg.CONF)
     targets = [oslo_messaging.Target(topic='notifications')]
