@@ -12,8 +12,11 @@
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from castellan.options import set_defaults as set_castellan_defaults
 from tatu import castellano
+import sys
 
+LOG = logging.getLogger(__name__)
 # 3 steps: register options; read the config file; use the options
 
 opts = [
@@ -32,7 +35,17 @@ log_levels = logging.get_default_log_levels() + \
 logging.set_defaults(default_log_levels=log_levels)
 #CONF(default_config_files=cfg.find_config_files(project='tatu', prog='tatu'))
 
-CONF(default_config_files=['tatu.conf'])
-
+try:
+    CONF(args=[], default_config_files=['files/tatu.conf'])
+except Exception as e:
+    LOG.error("Failed to load configuration file: {}".format(e))
+ 
 logging.setup(CONF, DOMAIN)
-castellano.validate_config()
+if CONF.tatu.use_barbican_key_manager:
+    LOG.debug("Using Barbican as key manager.")
+    set_castellan_defaults(CONF)
+else:
+    LOG.debug("Using Tatu as key manager.")
+    set_castellan_defaults(CONF,
+                           api_class='tatu.castellano.TatuKeyManager')
+

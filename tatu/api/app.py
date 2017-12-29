@@ -13,13 +13,15 @@
 import falcon
 import os.path
 from oslo_config import cfg
-
+from oslo_log import log as logging
 import models
 from tatu import config # sets up all required config
 from tatu.db.persistence import SQLAlchemySessionManager
 
+LOG = logging.getLogger(__name__)
 
 def create_app(sa):
+    LOG.info("Creating falcon API instance.")
     api = falcon.API(middleware=[models.Logger(), sa])
     api.add_route('/authorities', models.Authorities())
     api.add_route('/authorities/{auth_id}', models.Authority())

@@ -22,7 +22,6 @@ python-designateclient
 python-neutronclient
 python-novaclient
 dragonflow
-oslo_concurrency
 eventlet
 vine
 python-designateclient
