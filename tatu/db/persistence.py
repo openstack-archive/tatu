@@ -14,18 +14,13 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
+from tatu import config
 from tatu.db.models import Base
-
-
-def get_url():
-    return os.getenv("DATABASE_URL", "sqlite:///development.db")
-    # return os.getenv("DATABASE_URL", "sqlite:///:memory:")
-
 
 class SQLAlchemySessionManager(object):
 
     def __init__(self):
-        self.engine = create_engine(get_url())
+        self.engine = create_engine(config.CONF.tatu.sqlalchemy_engine)
         Base.metadata.create_all(self.engine)
         self.Session = scoped_session(sessionmaker(self.engine))
 

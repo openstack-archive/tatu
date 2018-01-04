@@ -200,3 +200,17 @@ def createHostCert(session, token_id, host_id, pub):
     session.add(token)
     session.commit()
     return host
+
+
+class L4PortReservation(Base):
+    __tablename__ = 'port_reservation'
+    ip_address = sa.Column(sa.String(36), primary_key=True)
+    # For now, just auto-increment the l4 port. Later, we'll reuse them.
+    l4_port = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+
+
+def reserve_l4_port(session, ip):
+    rsv = L4PortReservation(ip_address=str(ip))
+    session.add(rsv)
+    session.commit()
+    return rsv.l4_port

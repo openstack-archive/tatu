@@ -13,8 +13,8 @@
 import os
 import shutil
 import subprocess
-from tempfile import mkdtemp
 import uuid
+from tempfile import mkdtemp
 
 
 def random_uuid():
@@ -24,7 +24,6 @@ def random_uuid():
 def generateCert(auth_key, entity_key, hostname=None, principals='root'):
     # Temporarily write the authority private key, entity public key to files
     prefix = uuid.uuid4().hex
-    # Todo: make the temporary directory configurable or secure it.
     temp_dir = mkdtemp()
     ca_file = '/'.join([temp_dir, 'ca_key'])
     pub_file = '/'.join([temp_dir, 'entity.pub'])

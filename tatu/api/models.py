@@ -15,16 +15,14 @@ import json
 import logging
 import uuid
 from Crypto.PublicKey import RSA
-from oslo_config import cfg
 from oslo_log import log as logging
 
+from tatu.config import CONF
+from tatu.db import models as db
 from tatu.dns import add_srv_records
 from tatu.pat import create_pat_entries
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
-
-from tatu.db import models as db
 
 
 def validate_uuid(map, key):
@@ -237,7 +235,7 @@ class NovaVendorData(object):
         # TODO(pino): make the whole workflow fault-tolerant
         # TODO(pino): make this configurable per project or subnet
         if CONF.tatu.use_pat_bastion:
-            pat_entries = create_pat_entries(req.body['instance-id'], 22,
-                                             num=CONF.tatu.bastion_redundancy)
-            add_srv_records(req.body['project-id'], req.body['hostname'],
-                            pat_entries)
+            port_ip_tuples = create_pat_entries(self.session,
+                                             req.body['instance-id'], 22)
+            add_srv_records(req.body['hostname'], req.body['project-id'],
+                            port_ip_tuples)

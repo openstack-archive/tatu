@@ -12,56 +12,54 @@
 
 import os
 from designateclient.exceptions import Conflict
-from designateclient.v2 import client
-from keystoneclient import session
-from keystoneclient.auth.identity.generic.password import Password
-from oslo_config import cfg
 from oslo_log import log as logging
 
+from tatu.config import CONF, DESIGNATE
+
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
-
-auth = Password(auth_url=os.getenv('OS_AUTH_URL'),
-                username=os.getenv('OS_USERNAME'),
-                password=os.getenv('OS_PASSWORD'),
-                project_name=os.getenv('OS_PROJECT_NAME'),
-                project_domain_id='default',
-                user_domain_id='default')
-
-s = session.Session(auth=auth)
-
-client = client.Client(session=s)
-zone = None
-bastions = {}
+ZONE = None
 
 
-def setup(bastions=[]):
-    # TODO: retrieve the zone name and email from configuration
+def _setup_zone():
     try:
-        global zone
-        zone = client.zones.create('julia.com.', email='pino@yahoo.com')
+        global ZONE
+        ZONE = DESIGNATE.zones.create(CONF.tatu.pat_dns_zone_name,
+                                      email=CONF.tatu.pat_dns_zone_email)
     except Conflict:
         pass
 
-        # TODO: fetch all existing bastions
+
+def bastion_name_from_ip(ip_address):
+    return "bastion-{}.{}".format(ip_address.replace('.', '-'),
+                                  ZONE['name'])
 
 
-def add_bastion(ip_address, project_id, project_name, num):
-    bastion_name = "{}-{}-{}.{}".format(str(project_id)[:8], project_name, num,
-                                        zone['name'])
-    client.recordsets.create(zone['id'], bastion_name, 'A', [ip_address])
-    bastions.add(ip_address, bastion_name)
-    return bastion_name
+def register_bastion(ip_address):
+    try:
+        DESIGNATE.recordsets.create(ZONE['id'],
+                                    bastion_name_from_ip(ip_address),
+                                    'A', [ip_address])
+    except Conflict:
+        pass
 
 
-def add_srv_records(project_id, hostname, pat_entries):
+def sync_bastions(ip_addresses):
+    for ip in ip_addresses:
+        register_bastion(ip)
+
+
+def add_srv_records(hostname, project_id, port_ip_tuples):
     records = []
-    for pat_entry in pat_entries:
-        b = bastions[pat_entries.pat.ip_address]
+    for port, ip in port_ip_tuples:
+        bastion = bastion_name_from_ip(ip)
         # SRV record format is: priority weight port A-name
         records.add(
-            '10 50 {} {}'.format(pat_entry.pat_l4_port, b))
+            '10 50 {} {}'.format(port, bastion))
 
-    client.recordsets.create(zone['id'],
-                             'ssh.{}.{}'.format(hostname, project_id[:8]),
-                             'SRV', records)
+    DESIGNATE.recordsets.create(ZONE['id'],
+                                '_ssh._tcp.{}.{}'.format(hostname,
+                                                         project_id[:8]),
+                                'SRV', records)
+
+
+_setup_zone()
