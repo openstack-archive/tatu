@@ -19,8 +19,8 @@ from oslo_log import log as logging
 
 from tatu.config import CONF
 from tatu.db import models as db
-from tatu.dns import add_srv_records
-from tatu.pat import create_pat_entries
+from tatu.dns import add_srv_records, get_srv_url
+from tatu.pat import create_pat_entries, get_port_ip_tuples
 
 LOG = logging.getLogger(__name__)
 
@@ -98,9 +98,9 @@ class Authorities(object):
             items.append({
                 'auth_id': auth.auth_id,
                 'user_key.pub': user_pub_key,
-                'host_key.pub': host_pub_key
+                'host_key.pub': host_pub_key,
             })
-        body = {'items': items}
+        body = {'CAs': items}
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK
 
@@ -141,6 +141,21 @@ class UserCerts(object):
         resp.status = falcon.HTTP_201
         resp.location = '/usercerts/' + user.user_id + '/' + user.fingerprint
 
+    @falcon.before(validate)
+    def on_get(self, req, resp):
+        users = db.getUserCerts(self.session)
+        items = []
+        for user in users:
+            items.append({
+                'user_id': user.user_id,
+                'fingerprint': user.fingerprint,
+                'auth_id': user.auth_id,
+                'key-cert.pub': user.cert,
+            })
+        body = {'users': items}
+        resp.body = json.dumps(body)
+        resp.status = falcon.HTTP_OK
+
 
 class UserCert(object):
     @falcon.before(validate)
@@ -153,7 +168,7 @@ class UserCert(object):
             'user_id': user.user_id,
             'fingerprint': user.fingerprint,
             'auth_id': user.auth_id,
-            'key-cert.pub': user.cert
+            'key-cert.pub': user.cert,
         }
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK
@@ -185,6 +200,29 @@ class HostCerts(object):
         resp.body = hostToJson(host)
         resp.status = falcon.HTTP_201
         resp.location = '/hostcerts/' + host.host_id + '/' + host.fingerprint
+
+    @falcon.before(validate)
+    def on_get(self, req, resp):
+        hosts = db.getHostCerts(self.session)
+        items = []
+        for host in hosts:
+            item = {
+                'host_id': host.host_id,
+                'fingerprint': host.fingerprint,
+                'auth_id': host.auth_id,
+                'key-cert.pub': host.cert,
+                'hostname': host.hostname,
+            }
+            if CONF.tatu.use_pat_bastion:
+                item['pat_bastions'] = ','.join(
+                    '{}:{}'.format(t[1], t[0]) for t in
+                    get_port_ip_tuples(host.host_id, 22))
+                item['srv_url'] = get_srv_url(host.hostname, host.auth_id)
+            items.append(item)
+
+        body = {'hosts': items}
+        resp.body = json.dumps(body)
+        resp.status = falcon.HTTP_OK
 
 
 class HostCert(object):
@@ -254,6 +292,6 @@ class NovaVendorData(object):
         # TODO(pino): make this configurable per project or subnet
         if CONF.tatu.use_pat_bastion:
             port_ip_tuples = create_pat_entries(self.session,
-                                             req.body['instance-id'], 22)
+                                                req.body['instance-id'], 22)
             add_srv_records(req.body['hostname'], req.body['project-id'],
                             port_ip_tuples)

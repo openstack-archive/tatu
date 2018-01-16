@@ -48,6 +48,10 @@ def sync_bastions(ip_addresses):
         register_bastion(ip)
 
 
+def get_srv_url(hostname, project_id):
+    return '_ssh._tcp.{}.{}.{}'.format(hostname, project_id[:8], ZONE['name'])
+
+
 def add_srv_records(hostname, project_id, port_ip_tuples):
     records = []
     for port, ip in port_ip_tuples:
@@ -56,9 +60,7 @@ def add_srv_records(hostname, project_id, port_ip_tuples):
         records.add(
             '10 50 {} {}'.format(port, bastion))
 
-    DESIGNATE.recordsets.create(ZONE['id'],
-                                '_ssh._tcp.{}.{}'.format(hostname,
-                                                         project_id[:8]),
+    DESIGNATE.recordsets.create(ZONE['id'], get_srv_url(hostname, project_id),
                                 'SRV', records)
 
 

@@ -77,6 +77,10 @@ def getUserCert(session, user_id, fingerprint):
     return session.query(UserCert).get([user_id, fingerprint])
 
 
+def getUserCerts(session):
+    return session.query(UserCert)
+
+
 def createUserCert(session, user_id, auth_id, pub):
     # Retrieve the authority's private key and generate the certificate
     auth = getAuthority(session, auth_id)
@@ -152,6 +156,10 @@ class HostCert(Base):
 
 def getHostCert(session, host_id, fingerprint):
     return session.query(HostCert).get([host_id, fingerprint])
+
+
+def getHostCerts(session):
+    return session.query(HostCert)
 
 
 def createHostCert(session, token_id, host_id, pub):

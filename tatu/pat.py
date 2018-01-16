@@ -83,6 +83,22 @@ def _df_find_lrouter_by_lport(lport):
                 return lr
     return None
 
+
+def get_port_ip_tuples(instance_id, fixed_lport):
+    port_ip_tuples = []
+    server = NOVA.servers.get(instance_id)
+    ifaces = server.interface_list()
+    for iface in ifaces:
+        lport = DRAGONFLOW.get(LogicalPort(id=iface['port_id']))
+        lrouter = _df_find_lrouter_by_lport(lport)
+        if lrouter is None: continue
+        pat_entries = DRAGONFLOW.get(PATEntry(lport=lport))
+        for entry in pat_entries:
+            if entry.fixed_l4_port == fixed_lport:
+                port_ip_tuples.append((entry.pat_l4_port, str(entry.pat.ip)))
+    return port_ip_tuples
+
+
 def create_pat_entries(sql_session, instance_id, fixed_l4_port,
                        num=CONF.tatu.num_pat_bastions_per_server):
     port_ip_tuples = []
