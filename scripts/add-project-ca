@@ -11,13 +11,25 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import argparse
 import json
 import requests
 import sys
 import uuid
 
-server = 'http://172.24.4.1:18322'
-auth_id = str(uuid.UUID(sys.argv[1], version=4))
+parser = argparse.ArgumentParser(description="Get the CA's public keys from Tatu API.")
+parser.add_argument('--projid', '-P', required=True)
+parser.add_argument('--tatu-url', default= 'http://127.0.0.1:18322',
+                    help='URL of the Tatu API')
+args = parser.parse_args()
+
+try:
+    auth_id = str(uuid.UUID(args.projid, version=4))
+except:
+    print '--projid should be the UUID of a Tatu CA (usually a cloud tenant/project).'
+    exit()
+
+server = args.tatu_url
 response = requests.post(
     server + '/authorities',
     data=json.dumps({'auth_id': auth_id})

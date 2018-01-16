@@ -12,7 +12,7 @@
 
 from dragonflow.db.models.core import Chassis
 from dragonflow.db.models.l2 import LogicalPort
-from dragonflow.db.models.l2 import LogicalRouter
+from dragonflow.db.models.l3 import LogicalRouter
 from dragonflow.db.models.l3 import PAT
 from dragonflow.db.models.l3 import PATEntry
 from oslo_log import log as logging
@@ -28,15 +28,15 @@ def _sync_pats():
     # TODO(pino): re-bind PATs when hypervisors fail (here and on notification)
     all_chassis = DRAGONFLOW.get_all(Chassis)
     # Filter the chassis that already have PATS assigned
+    # TODO: This doesn't work now because the p.chassis is a ChassisProxy
     free_chassis = set(all_chassis).difference(p.chassis for p in PATS)
     # Don't make more PATs than there are free chassis
     num_to_make = min(CONF.tatu.num_total_pats - len(PATS),
                       len(free_chassis))
-    if num_to_make <= 0:
-        return
-    assigned_chassis = random.sample(free_chassis, num_to_make)
-    for c in assigned_chassis:
-        _add_pat(c)
+    if num_to_make > 0:
+        assigned_chassis = random.sample(free_chassis, num_to_make)
+        for c in assigned_chassis:
+            _add_pat(c)
     dns.sync_bastions(str(p.ip_address) for p in PATS)
 
 
@@ -49,16 +49,19 @@ def _add_pat(chassis):
             "admin_state_up": True,
             "name": 'TatuPAT', # TODO(pino): set device owner to Tatu?
             "network_id": network_id,
+            "port_security_enabled": False,
+            "security_groups": [],
         }
     }
     neutron_port = NEUTRON.create_port(body)
     lport = DRAGONFLOW.get(LogicalPort(id=neutron_port['port']['id']))
-    ip = get_ip4_from_lport(lport)
+    ip = _get_ip4_from_lport(lport)
     pat = PAT(
         id = str(ip),
         topic = 'tatu', # TODO(pino): What topic? Admin project_id?
         ip_address = ip,
-        lport = lport
+        lport = lport,
+        chassis = chassis,
     )
     # We only need to store the PAT in dragonflow's DB, not API/MySQL
     DRAGONFLOW.create(pat)
@@ -72,7 +75,7 @@ def _get_ip4_from_lport(lport):
     return None
 
 
-def df_find_lrouter_by_lport(lport):
+def _df_find_lrouter_by_lport(lport):
     lrouters = DRAGONFLOW.get_all(LogicalRouter)
     for lr in lrouters:
         for lp in lr.ports:
@@ -88,7 +91,7 @@ def create_pat_entries(sql_session, instance_id, fixed_l4_port,
     for iface in ifaces:
         lport = DRAGONFLOW.get(LogicalPort(id=iface['port_id']))
         # TODO(pino): no router? consider SNAT of source IP to 169.254.169.254
-        lrouter = df_find_lrouter_by_lport(lport)
+        lrouter = _df_find_lrouter_by_lport(lport)
         if lrouter is None: continue
         # Reserve N l4 ports on distinct IPs.
         pats = PATS
@@ -97,6 +100,8 @@ def create_pat_entries(sql_session, instance_id, fixed_l4_port,
         for pat in pats:
             pat_l4_port = tatu_db.reserve_l4_port(sql_session, str(pat.ip))
             pat_entry = PATEntry(
+                id = '{}:{}'.format(pat.id, pat_l4_port),
+                topic = 'tatu',
                 pat = pat,
                 pat_l4_port = pat_l4_port,
                 fixed_ip_address = _get_ip4_from_lport(lport),

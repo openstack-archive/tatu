@@ -86,6 +86,24 @@ class Authorities(object):
         resp.status = falcon.HTTP_201
         resp.location = '/authorities/' + req.body['auth_id']
 
+    @falcon.before(validate)
+    def on_get(self, req, resp):
+        auths = db.getAuthorities(self.session)
+        items = []
+        for auth in auths:
+            user_key = RSA.importKey(db.getAuthUserKey(auth))
+            user_pub_key = user_key.publickey().exportKey('OpenSSH')
+            host_key = RSA.importKey(db.getAuthHostKey(auth))
+            host_pub_key = host_key.publickey().exportKey('OpenSSH')
+            items.append({
+                'auth_id': auth.auth_id,
+                'user_key.pub': user_pub_key,
+                'host_key.pub': host_pub_key
+            })
+        body = {'items': items}
+        resp.body = json.dumps(body)
+        resp.status = falcon.HTTP_OK
+
 
 class Authority(object):
     @falcon.before(validate)

@@ -26,7 +26,7 @@ def _setup_zone():
         ZONE = DESIGNATE.zones.create(CONF.tatu.pat_dns_zone_name,
                                       email=CONF.tatu.pat_dns_zone_email)
     except Conflict:
-        pass
+        ZONE = DESIGNATE.zones.get(CONF.tatu.pat_dns_zone_name)
 
 
 def bastion_name_from_ip(ip_address):

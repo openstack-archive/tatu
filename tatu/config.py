@@ -18,6 +18,7 @@ from keystoneauth1.identity import v3
 from novaclient import client as nova_client
 from neutronclient.v2_0 import client as neutron_client
 from oslo_config import cfg
+from oslo_context import context
 from oslo_log import log as logging
 from castellan.options import set_defaults as set_castellan_defaults
 
@@ -63,11 +64,9 @@ logging.register_options(CONF)
 log_levels = logging.get_default_log_levels() + \
              ['tatu=DEBUG', '__main__=DEBUG']
 logging.set_defaults(default_log_levels=log_levels)
-
 try:
     CONF(args=[],
          default_config_files=['/etc/tatu/tatu.conf',
-                                        'tatu.conf',
                                         'files/tatu.conf'
                                ]
          )
@@ -92,6 +91,10 @@ NOVA = nova_client.Client('2', session=session)
 NEUTRON = neutron_client.Client(session=session)
 DESIGNATE = designate_client.Client(session=session)
 
-dragonflow_cfg.CONF(default_config_files=['/etc/neutron/dragonflow.ini'])
+dragonflow_cfg.CONF(args=[], default_config_files=['/etc/neutron/dragonflow.ini'])
 dragonflow_cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
 DRAGONFLOW = api_nb.NbApi.get_instance(False)
+
+# Create a context for use by Castellan
+CONTEXT = context.RequestContext(auth_token=auth.get_token(session),
+                                 tenant=auth.get_project_id(session))

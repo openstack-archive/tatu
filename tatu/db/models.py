@@ -36,6 +36,10 @@ def getAuthority(session, auth_id):
     return session.query(Authority).get(auth_id)
 
 
+def getAuthorities(session):
+    return session.query(Authority)
+
+
 def getAuthUserKey(auth):
     return get_secret(auth.user_key)
 

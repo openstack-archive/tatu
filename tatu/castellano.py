@@ -17,48 +17,35 @@ from castellan.key_manager.key_manager import KeyManager
 from oslo_config import cfg
 from oslo_log import log as logging
 
+from tatu.config import CONTEXT
+
 LOG = logging.getLogger(__name__)
 
-_context = None
-_api = None
+_api = API()
 
 
-def context():
-    global _context
-    if _context is None and cfg.CONF.tatu.use_barbican_key_manager:
-        _context = credential_factory(conf=cfg.CONF)
-    return _context
-
-
-def api():
-    global _api
-    if _api is None:
-        _api = API()
-    return _api
-
-
-def delete_secret(id, ctx=None):
+def delete_secret(id):
     """delete a secret from the external key manager
 
     :param id: The identifier of the secret to delete
     :param ctx: The context, and associated authentication, to use with
                 this operation (defaults to the current context)
     """
-    api().delete(ctx or context(), id)
+    _api.delete(CONTEXT, id)
 
 
-def get_secret(id, ctx=None):
+def get_secret(id):
     """get a secret associated with an id
 
     :param id: The identifier of the secret to retrieve
     :param ctx: The context, and associated authentication, to use with
                 this operation (defaults to the current context)
     """
-    key = api().get(ctx or context(), id)
+    key = _api.get(CONTEXT, id)
     return key.get_encoded()
 
 
-def store_secret(secret, ctx=None):
+def store_secret(secret):
     """store a secret and return its identifier
 
     :param secret: The secret to store, this should be a string
@@ -66,7 +53,7 @@ def store_secret(secret, ctx=None):
                 this operation (defaults to the current context)
     """
     key = Passphrase(secret)
-    return api().store(ctx or context(), key)
+    return _api.store(CONTEXT, key)
 
 
 """
