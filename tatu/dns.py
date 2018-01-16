@@ -57,11 +57,15 @@ def add_srv_records(hostname, project_id, port_ip_tuples):
     for port, ip in port_ip_tuples:
         bastion = bastion_name_from_ip(ip)
         # SRV record format is: priority weight port A-name
-        records.add(
+        records.append(
             '10 50 {} {}'.format(port, bastion))
 
-    DESIGNATE.recordsets.create(ZONE['id'], get_srv_url(hostname, project_id),
-                                'SRV', records)
+    try:
+        DESIGNATE.recordsets.create(ZONE['id'],
+                                    get_srv_url(hostname, project_id),
+                                    'SRV', records)
+    except Conflict:
+        pass
 
 
 _setup_zone()

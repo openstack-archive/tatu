@@ -41,7 +41,7 @@ opts = [
                default='tatu@nono.nono',
                help='Email of admin for DNS zone for PAT bastions'),
     cfg.StrOpt('sqlalchemy_engine',
-               default='mysql+pymysql://root:pinot@127.0.0.1/neutron?charset=utf8',
+               default='mysql+pymysql://root:pinot@127.0.0.1',
                help='SQLAlchemy database URL'),
     cfg.StrOpt('auth_url',
                default='http://localhost/identity/v3',
@@ -64,12 +64,12 @@ logging.register_options(CONF)
 log_levels = logging.get_default_log_levels() + \
              ['tatu=DEBUG', '__main__=DEBUG']
 logging.set_defaults(default_log_levels=log_levels)
+
+
 try:
-    CONF(args=[],
-         default_config_files=['/etc/tatu/tatu.conf',
-                                        'files/tatu.conf'
-                               ]
-         )
+    CONF(args=[], default_config_files=['/etc/tatu/tatu.conf',
+                                       'files/tatu.conf',
+                                       '/etc/neutron/dragonflow.ini'])
 except Exception as e:
     LOG.error("Failed to load configuration file: {}".format(e))
  
@@ -91,7 +91,6 @@ NOVA = nova_client.Client('2', session=session)
 NEUTRON = neutron_client.Client(session=session)
 DESIGNATE = designate_client.Client(session=session)
 
-dragonflow_cfg.CONF(args=[], default_config_files=['/etc/neutron/dragonflow.ini'])
 dragonflow_cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
 DRAGONFLOW = api_nb.NbApi.get_instance(False)
 

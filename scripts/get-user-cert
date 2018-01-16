@@ -57,7 +57,7 @@ response = requests.post(
     data=json.dumps(user)
 )
 if response.status_code != 201:
-    print 'Failed: ' + response
+    print 'Failed: ' + str(response)
     exit()
 
 assert 'location' in response.headers

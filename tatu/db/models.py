@@ -68,7 +68,7 @@ class UserCert(Base):
     __tablename__ = 'user_certs'
 
     user_id = sa.Column(sa.String(36), primary_key=True)
-    fingerprint = sa.Column(sa.String(36), primary_key=True)
+    fingerprint = sa.Column(sa.String(60), primary_key=True)
     auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
     cert = sa.Column(sa.Text)
 

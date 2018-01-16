@@ -213,7 +213,7 @@ class HostCerts(object):
                 'key-cert.pub': host.cert,
                 'hostname': host.hostname,
             }
-            if CONF.tatu.use_pat_bastion:
+            if CONF.tatu.use_pat_bastions:
                 item['pat_bastions'] = ','.join(
                     '{}:{}'.format(t[1], t[0]) for t in
                     get_port_ip_tuples(host.host_id, 22))
@@ -290,7 +290,7 @@ class NovaVendorData(object):
 
         # TODO(pino): make the whole workflow fault-tolerant
         # TODO(pino): make this configurable per project or subnet
-        if CONF.tatu.use_pat_bastion:
+        if CONF.tatu.use_pat_bastions:
             port_ip_tuples = create_pat_entries(self.session,
                                                 req.body['instance-id'], 22)
             add_srv_records(req.body['hostname'], req.body['project-id'],

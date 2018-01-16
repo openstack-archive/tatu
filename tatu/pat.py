@@ -86,26 +86,32 @@ def _df_find_lrouter_by_lport(lport):
 
 def get_port_ip_tuples(instance_id, fixed_lport):
     port_ip_tuples = []
+    all_entries = DRAGONFLOW.get_all(PATEntry)
+    LOG.debug('Found {} PATEntries: {}'.format(len(all_entries), all_entries))
     server = NOVA.servers.get(instance_id)
     ifaces = server.interface_list()
     for iface in ifaces:
-        lport = DRAGONFLOW.get(LogicalPort(id=iface['port_id']))
+        lport = DRAGONFLOW.get(LogicalPort(id=iface.port_id))
         lrouter = _df_find_lrouter_by_lport(lport)
         if lrouter is None: continue
-        pat_entries = DRAGONFLOW.get(PATEntry(lport=lport))
-        for entry in pat_entries:
-            if entry.fixed_l4_port == fixed_lport:
-                port_ip_tuples.append((entry.pat_l4_port, str(entry.pat.ip)))
+        for entry in all_entries:
+            if entry.lport.id == lport.id and entry.fixed_l4_port == fixed_lport:
+                pat =  DRAGONFLOW.get(PAT(id=entry.pat.id))
+                port_ip_tuples.append((entry.pat_l4_port, str(pat.ip_address)))
+        if port_ip_tuples: break
     return port_ip_tuples
 
 
 def create_pat_entries(sql_session, instance_id, fixed_l4_port,
                        num=CONF.tatu.num_pat_bastions_per_server):
-    port_ip_tuples = []
+    port_ip_tuples = get_port_ip_tuples(instance_id, fixed_l4_port)
+    LOG.debug('Found {} tuples: {}'.format(len(port_ip_tuples), port_ip_tuples))
+    if port_ip_tuples: return port_ip_tuples
+    LOG.debug('Creating new tuples.')
     server = NOVA.servers.get(instance_id)
     ifaces = server.interface_list()
     for iface in ifaces:
-        lport = DRAGONFLOW.get(LogicalPort(id=iface['port_id']))
+        lport = DRAGONFLOW.get(LogicalPort(id=iface.port_id))
         # TODO(pino): no router? consider SNAT of source IP to 169.254.169.254
         lrouter = _df_find_lrouter_by_lport(lport)
         if lrouter is None: continue
@@ -114,7 +120,7 @@ def create_pat_entries(sql_session, instance_id, fixed_l4_port,
         if (num < len(PATS)):
             pats = random.sample(pats, num)
         for pat in pats:
-            pat_l4_port = tatu_db.reserve_l4_port(sql_session, str(pat.ip))
+            pat_l4_port = tatu_db.reserve_l4_port(sql_session, str(pat.ip_address))
             pat_entry = PATEntry(
                 id = '{}:{}'.format(pat.id, pat_l4_port),
                 topic = 'tatu',
@@ -123,10 +129,10 @@ def create_pat_entries(sql_session, instance_id, fixed_l4_port,
                 fixed_ip_address = _get_ip4_from_lport(lport),
                 fixed_l4_port = fixed_l4_port,
                 lport = lport,
-                lrouter = df_fields.ReferenceField(LogicalRouter),
+                lrouter = lrouter,
             )
             DRAGONFLOW.create(pat_entry)
-            port_ip_tuples.append((pat_l4_port, str(pat.ip)))
+            port_ip_tuples.append((pat_l4_port, str(pat.ip_address)))
         # if we got here, we now have the required pat_entries
         break
     return port_ip_tuples

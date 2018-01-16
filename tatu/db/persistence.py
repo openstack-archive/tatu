@@ -11,16 +11,22 @@
 #    under the License.
 
 import os
+from oslo_log import log as logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 
 from tatu import config
 from tatu.db.models import Base
 
+LOG = logging.getLogger(__name__)
+
 class SQLAlchemySessionManager(object):
 
     def __init__(self):
+        LOG.info('Creating sqlalchemy engine {}'.format(config.CONF.tatu.sqlalchemy_engine))
         self.engine = create_engine(config.CONF.tatu.sqlalchemy_engine)
+        self.engine.execute("CREATE DATABASE IF NOT EXISTS tatu;")
+        self.engine.execute("USE tatu;")
         Base.metadata.create_all(self.engine)
         self.Session = scoped_session(sessionmaker(self.engine))
 
