@@ -11,11 +11,8 @@
 #    under the License.
 
 import falcon
-import os.path
-from oslo_config import cfg
 from oslo_log import log as logging
-import models
-from tatu import config # sets up all required config
+from tatu import models
 from tatu.db.persistence import SQLAlchemySessionManager
 
 LOG = logging.getLogger(__name__)
@@ -31,6 +28,7 @@ def create_app(sa):
     api.add_route('/hostcerts/{host_id}/{fingerprint}', models.HostCert())
     api.add_route('/hosttokens', models.Tokens())
     api.add_route('/novavendordata', models.NovaVendorData())
+    api.add_route('/revokeduserkeys/{auth_id}', models.RevokedUserKeys())
     return api
 
 

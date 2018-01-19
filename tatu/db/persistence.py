@@ -10,7 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
 from oslo_log import log as logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session

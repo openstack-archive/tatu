@@ -14,7 +14,6 @@ from castellan.common.objects.passphrase import Passphrase
 from castellan.common.utils import credential_factory
 from castellan.key_manager import API
 from castellan.key_manager.key_manager import KeyManager
-from oslo_config import cfg
 from oslo_log import log as logging
 
 from tatu.config import CONTEXT

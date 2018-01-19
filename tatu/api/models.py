@@ -124,6 +124,15 @@ class Authority(object):
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK
 
+def _userAsDict(user):
+    return {
+        'user_id': user.user_id,
+        'fingerprint': user.fingerprint,
+        'auth_id': user.auth_id,
+        'key-cert.pub': user.cert,
+        'revoked': user.revoked,
+        'serial': user.serial,
+    }
 
 class UserCerts(object):
     @falcon.before(validate)
@@ -146,12 +155,7 @@ class UserCerts(object):
         users = db.getUserCerts(self.session)
         items = []
         for user in users:
-            items.append({
-                'user_id': user.user_id,
-                'fingerprint': user.fingerprint,
-                'auth_id': user.auth_id,
-                'key-cert.pub': user.cert,
-            })
+            items.append(_userAsDict(user))
         body = {'users': items}
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK
@@ -164,13 +168,7 @@ class UserCert(object):
         if user is None:
             resp.status = falcon.HTTP_NOT_FOUND
             return
-        body = {
-            'user_id': user.user_id,
-            'fingerprint': user.fingerprint,
-            'auth_id': user.auth_id,
-            'key-cert.pub': user.cert,
-        }
-        resp.body = json.dumps(body)
+        resp.body = json.dumps(_userAsDict(user))
         resp.status = falcon.HTTP_OK
 
 
@@ -295,3 +293,25 @@ class NovaVendorData(object):
                                                 req.body['instance-id'], 22)
             add_srv_records(req.body['hostname'], req.body['project-id'],
                             port_ip_tuples)
+
+class RevokedUserKeys(object):
+    @falcon.before(validate)
+    def on_get(self, req, resp, auth_id):
+        body = {
+            'auth_id': auth_id,
+            'encoding': 'base64',
+            'revoked_keys_data': db.getRevokedKeysBase64(self.session, auth_id)
+        }
+        resp.body = json.dumps(body)
+        resp.status = falcon.HTTP_OK
+
+    @falcon.before(validate)
+    def on_post(self, req, resp, auth_id):
+        db.revokeUserKey(
+            self.session,
+            auth_id,
+            serial=req.body.get('serial', None),
+            key=req.body.get('key_id', None),
+            cert=req.body.get('cert', None)
+        )
+        resp.status = falcon.HTTP_OK

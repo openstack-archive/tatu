@@ -19,7 +19,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import sshpubkeys
 
 from tatu.castellano import get_secret, store_secret
-from tatu.utils import generateCert, random_uuid
+from tatu.utils import generateCert, revokedKeysBase64, random_uuid
 
 Base = declarative_base()
 
@@ -71,6 +71,8 @@ class UserCert(Base):
     fingerprint = sa.Column(sa.String(60), primary_key=True)
     auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
     cert = sa.Column(sa.Text)
+    serial = sa.Column(sa.Integer, index=True, autoincrement=True)
+    revoked = sa.Column(sa.Boolean, default=False)
 
 
 def getUserCert(session, user_id, fingerprint):
@@ -106,6 +108,52 @@ def createUserCert(session, user_id, auth_id, pub):
     session.commit()
     return user
 
+
+class RevokedKey(Base):
+    __tablename__ = 'revoked_keys'
+
+    auth_id = sa.Column(sa.String(36), primary_key=True)
+    serial = sa.Column(sa.Integer, sa.ForeignKey("user_certs.serial"),
+                       primary_key=True)
+
+
+def getRevokedKeysBase64(session, auth_id):
+    auth = getAuthority(session, auth_id)
+    if auth is None:
+        raise falcon.HTTPNotFound(
+            description='No Authority found with that ID')
+    serials = [k.serial for k in session.query(RevokedKey).filter(
+        RevokedKey.auth_id == auth_id)]
+    return revokedKeysBase64(getAuthUserKey(auth), serials)
+
+
+def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
+    ser = None
+    userCert = None
+    if serial is not None:
+        userCert = session.query(UserCert).filter(
+            UserCert.serial == serial).one()
+        if userCert is None:
+            raise falcon.HTTPBadRequest(
+                "Can't find the certificate for serial # {}".format(serial))
+        if userCert.auth_id != auth_id:
+            raise falcon.HTTPBadRequest(
+                "Incorrect CA ID for serial # {}".format(serial))
+        ser = serial
+    elif key is not None:
+        # TODO(pino): look up the UserCert by key id and get the serial number
+        pass
+    elif cert is not None:
+        # TODO(pino): Decode the cert, validate against UserCert and get serial
+        pass
+
+    if ser is None or userCert is None:
+        raise falcon.HTTPBadRequest("Cannot identify which Cert to revoke.")
+
+    userCert.revoked = True
+    session.add(userCert)
+    session.add(RevokedKey(auth_id=auth_id, serial=ser))
+    session.commit()
 
 class Token(Base):
     __tablename__ = 'tokens'

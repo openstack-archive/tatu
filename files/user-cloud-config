@@ -13,7 +13,6 @@ write_files:
         import json
         import requests
         import os
-        import subprocess
         import uuid
         def getVendordataFromConfigDrive():
           path = '/mnt/config/openstack/latest/vendor_data2.json'
@@ -77,16 +76,38 @@ write_files:
           f.write(hostcert['key-cert.pub'])
         # Write the authorized principals file
         os.mkdir('/etc/ssh/auth_principals')
-        with open('/etc/ssh/auth_principals/ubuntu', 'w') as f:
+        with open('/etc/ssh/auth_principals/root', 'w') as f:
           for p in principals:
             f.write(p + os.linesep)
         # Write the User CA public key file
         with open('/etc/ssh/ca_user.pub', 'w') as f:
           f.write(tatu['auth_pub_key_user'])
         print 'All tasks completed.'
+  - path: /root/manage-revoked_keys.py
+    permissions: '0700'
+    owner: root:root
+    content: |
+        import base64
+        import json
+        import requests
+        import uuid
+        path = '/mnt/config/openstack/latest/meta_data.json'
+        with open(path, 'r') as f:
+          json_string = f.read()
+        metadata = json.loads(json_string)
+        auth_id = str(uuid.UUID(metadata['project_id'], version=4))
+        response = requests.get(server + '/noauth/revokedkeys/' + auth_id)
+        assert response.status_code == 200
+        body = json.loads(response.content)
+        assert 'revoked_keys_data' in body
+        with open('/etc/ssh/revoked-keys', 'w') as f:
+          f.write(base64.b64decode(crl_body['revoked_keys_data']))
 runcmd:
+  - dnf install -y python python-requests
   - python /root/setup-ssh.py > /var/log/setup-ssh.log 2>&1
   - sed -i -e '$aTrustedUserCAKeys /etc/ssh/ca_user.pub' /etc/ssh/sshd_config
   - sed -i -e '$aAuthorizedPrincipalsFile /etc/ssh/auth_principals/%u' /etc/ssh/sshd_config
   - sed -i -e '$aHostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub' /etc/ssh/sshd_config
-  - systemctl restart ssh
+  - python /root/manage-revoked-keys.py >> /var/log/setup-ssh.log 2>&1
+  - sed -i -e '$aRevokedKeys /etc/ssh/revoked-keys' /etc/ssh/sshd_config
+  - systemctl restart sshd

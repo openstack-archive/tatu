@@ -10,6 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import os
 import shutil
 import subprocess
@@ -23,7 +24,6 @@ def random_uuid():
 
 def generateCert(auth_key, entity_key, hostname=None, principals='root'):
     # Temporarily write the authority private key, entity public key to files
-    prefix = uuid.uuid4().hex
     temp_dir = mkdtemp()
     ca_file = '/'.join([temp_dir, 'ca_key'])
     pub_file = '/'.join([temp_dir, 'entity.pub'])
@@ -48,4 +48,29 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
             cert = text_file.read()
     finally:
         shutil.rmtree(temp_dir)
-        return cert
+    return cert
+
+
+def revokedKeysBase64(auth_key, serial_list):
+    # Temporarily write the authority private key and list of serials
+    temp_dir = mkdtemp()
+    ca_file = '/'.join([temp_dir, 'ca_key'])
+    serials_file =  '/'.join([temp_dir, 'serials'])
+    revoked_file = '/'.join([temp_dir, 'revoked'])
+    try:
+        fd = os.open(ca_file, os.O_WRONLY | os.O_CREAT, 0o600)
+        os.close(fd)
+        with open(ca_file, "w") as text_file:
+            text_file.write(auth_key)
+        with open(serials_file, "w", 0o644) as text_file:
+            for s in serial_list:
+                text_file.write("serial: " + s + "\n")
+        args = ['ssh-keygen', '-s', ca_file, '-k', '-f', revoked_file,
+                serials_file]
+        subprocess.check_output(args, stderr=subprocess.STDOUT)
+        # Return the base64 encoded contents of the revoked keys file
+        with open(revoked_file, 'r') as text_file:
+            b64data = base64.b64encode(text_file.read())
+    finally:
+        shutil.rmtree(temp_dir)
+    return b64data
