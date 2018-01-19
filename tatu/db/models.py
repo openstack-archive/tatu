@@ -149,6 +149,8 @@ def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
 
     if ser is None or userCert is None:
         raise falcon.HTTPBadRequest("Cannot identify which Cert to revoke.")
+    if userCert.revoked:
+        raise falcon.HTTPBadRequest("Certificate was already revoked.")
 
     userCert.revoked = True
     session.add(userCert)
