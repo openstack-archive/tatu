@@ -117,7 +117,7 @@ class Token(Base):
     hostname = sa.Column(sa.String(36))
     used = sa.Column(sa.Boolean, default=False)
     date_used = sa.Column(sa.DateTime, default=datetime.min)
-    fingerprint_used = sa.Column(sa.String(36))
+    fingerprint_used = sa.Column(sa.String(60))
 
 
 def createToken(session, host_id, auth_id, hostname):
@@ -146,7 +146,7 @@ class HostCert(Base):
     __tablename__ = 'host_certs'
 
     host_id = sa.Column(sa.String(36), primary_key=True)
-    fingerprint = sa.Column(sa.String(36), primary_key=True)
+    fingerprint = sa.Column(sa.String(60), primary_key=True)
     auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
     token_id = sa.Column(sa.String(36), sa.ForeignKey('tokens.token_id'))
     pubkey = sa.Column(sa.Text)
