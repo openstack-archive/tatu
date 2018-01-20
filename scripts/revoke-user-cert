@@ -21,7 +21,7 @@ from Crypto.PublicKey import RSA
 
 parser = argparse.ArgumentParser(description='Revoke a Tatu-generated user SSH certificate.')
 parser.add_argument('--projid', '-P', required=True)
-parser.add_argument('--serial', '-K', required=True)
+parser.add_argument('--serial', '-S', required=True)
 parser.add_argument('--tatu-url', default= 'http://127.0.0.1:18322',
                     help='URL of the Tatu API')
 args = parser.parse_args()
@@ -37,12 +37,6 @@ if not args.serial.isdigit():
     exit()
 
 server = args.tatu_url
-
-body = {
-    'serial': args.serial,
-    'auth_id': auth_id,
-    'key.pub': pubkeytext
-}
 
 response = requests.post(
     server + '/revokeduserkeys/' + auth_id,

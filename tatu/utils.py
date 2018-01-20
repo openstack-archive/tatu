@@ -22,7 +22,7 @@ def random_uuid():
     return str(uuid.uuid4())
 
 
-def generateCert(auth_key, entity_key, hostname=None, principals='root'):
+def generateCert(auth_key, entity_key, user=True, principals='root', serial=0):
     # Temporarily write the authority private key, entity public key to files
     temp_dir = mkdtemp()
     ca_file = '/'.join([temp_dir, 'ca_key'])
@@ -37,8 +37,8 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
         with open(pub_file, "w", 0o644) as text_file:
             text_file.write(entity_key)
         args = ['ssh-keygen', '-s', ca_file, '-I', 'testID', '-V',
-                '-1d:+365d']
-        if hostname is None:
+                '-1d:+365d', '-z', str(serial)]
+        if user:
             args.extend(['-n', principals, pub_file])
         else:
             args.extend(['-h', pub_file])
@@ -51,22 +51,19 @@ def generateCert(auth_key, entity_key, hostname=None, principals='root'):
     return cert
 
 
-def revokedKeysBase64(auth_key, serial_list):
+def revokedKeysBase64(ca_public, serial_list):
     # Temporarily write the authority private key and list of serials
     temp_dir = mkdtemp()
-    ca_file = '/'.join([temp_dir, 'ca_key'])
+    ca_file = '/'.join([temp_dir, 'ca_public'])
     serials_file =  '/'.join([temp_dir, 'serials'])
     revoked_file = '/'.join([temp_dir, 'revoked'])
     try:
-        fd = os.open(ca_file, os.O_WRONLY | os.O_CREAT, 0o600)
-        os.close(fd)
-        with open(ca_file, "w") as text_file:
-            text_file.write(auth_key)
+        with open(ca_file, "w", 0o644) as text_file:
+            text_file.write(ca_public)
         with open(serials_file, "w", 0o644) as text_file:
             for s in serial_list:
-                text_file.write("serial: " + s + "\n")
-        args = ['ssh-keygen', '-s', ca_file, '-k', '-f', revoked_file,
-                serials_file]
+                text_file.write("serial: {}\n".format(s))
+        args = ['ssh-keygen', '-k', '-f', revoked_file, '-s', ca_file, serials_file]
         subprocess.check_output(args, stderr=subprocess.STDOUT)
         # Return the base64 encoded contents of the revoked keys file
         with open(revoked_file, 'r') as text_file:

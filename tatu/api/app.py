@@ -12,7 +12,7 @@
 
 import falcon
 from oslo_log import log as logging
-from tatu import models
+from tatu.api import models
 from tatu.db.persistence import SQLAlchemySessionManager
 
 LOG = logging.getLogger(__name__)

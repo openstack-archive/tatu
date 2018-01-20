@@ -67,16 +67,20 @@ def createAuthority(session, auth_id):
 class UserCert(Base):
     __tablename__ = 'user_certs'
 
-    user_id = sa.Column(sa.String(36), primary_key=True)
-    fingerprint = sa.Column(sa.String(60), primary_key=True)
+    serial = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    user_id = sa.Column(sa.String(36))
+    fingerprint = sa.Column(sa.String(60))
     auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
     cert = sa.Column(sa.Text)
-    serial = sa.Column(sa.Integer, index=True, autoincrement=True)
     revoked = sa.Column(sa.Boolean, default=False)
+
+sa.Index('idx_user_finger', UserCert.user_id, UserCert.fingerprint, unique=True)
 
 
 def getUserCert(session, user_id, fingerprint):
-    return session.query(UserCert).get([user_id, fingerprint])
+    return session.query(UserCert).filter(
+            UserCert.user_id == user_id).filter(
+                    UserCert.fingerprint == fingerprint).one_or_none()
 
 
 def getUserCerts(session):
@@ -90,21 +94,22 @@ def createUserCert(session, user_id, auth_id, pub):
         raise falcon.HTTPNotFound(
             description='No Authority found with that ID')
     fingerprint = sshpubkeys.SSHKey(pub).hash_md5()
-    certRecord = session.query(UserCert).get([user_id, fingerprint])
+    certRecord = getUserCert(session, user_id, fingerprint)
     if certRecord is not None:
         return certRecord
-    cert = generateCert(getAuthUserKey(auth), pub,
-                        principals='admin,root')
-    if cert is None:
-        raise falcon.HTTPInternalServerError(
-            "Failed to generate the certificate")
     user = UserCert(
         user_id=user_id,
         fingerprint=fingerprint,
         auth_id=auth_id,
-        cert=cert
     )
     session.add(user)
+    session.flush()
+    user.cert = generateCert(getAuthUserKey(auth), pub, user=True,
+                        principals='admin,root', serial=user.serial)
+    if user.cert is None:
+        raise falcon.HTTPInternalServerError(
+            "Failed to generate the certificate")
+    
     session.commit()
     return user
 
@@ -124,7 +129,9 @@ def getRevokedKeysBase64(session, auth_id):
             description='No Authority found with that ID')
     serials = [k.serial for k in session.query(RevokedKey).filter(
         RevokedKey.auth_id == auth_id)]
-    return revokedKeysBase64(getAuthUserKey(auth), serials)
+    user_key = RSA.importKey(getAuthUserKey(auth))
+    user_pub_key = user_key.publickey().exportKey('OpenSSH')
+    return revokedKeysBase64(user_pub_key, serials)
 
 
 def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
@@ -140,7 +147,7 @@ def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
             raise falcon.HTTPBadRequest(
                 "Incorrect CA ID for serial # {}".format(serial))
         ser = serial
-    elif key is not None:
+    elif key_id is not None:
         # TODO(pino): look up the UserCert by key id and get the serial number
         pass
     elif cert is not None:
@@ -242,8 +249,7 @@ def createHostCert(session, token_id, host_id, pub):
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
         raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(getAuthHostKey(auth), pub,
-                        hostname=token.hostname)
+    cert = generateCert(getAuthHostKey(auth), pub, user=False)
     if cert == '':
         raise falcon.HTTPInternalServerError(
             "Failed to generate the certificate")

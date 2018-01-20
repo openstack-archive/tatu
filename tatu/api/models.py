@@ -311,7 +311,7 @@ class RevokedUserKeys(object):
             self.session,
             auth_id,
             serial=req.body.get('serial', None),
-            key=req.body.get('key_id', None),
+            key_id=req.body.get('key_id', None),
             cert=req.body.get('cert', None)
         )
         resp.status = falcon.HTTP_OK
