@@ -9,6 +9,7 @@ write_files:
     permissions: '0700'
     owner: root:root
     content: |
+        #!/usr/bin/env python
         print 'Importing packages'
         import json
         import requests
@@ -87,6 +88,7 @@ write_files:
     permissions: '0700'
     owner: root:root
     content: |
+        #!/usr/bin/env python
         import base64
         import json
         import requests
@@ -96,12 +98,13 @@ write_files:
           json_string = f.read()
         metadata = json.loads(json_string)
         auth_id = str(uuid.UUID(metadata['project_id'], version=4))
-        response = requests.get(server + '/noauth/revokedkeys/' + auth_id)
+        server = 'http://172.24.4.1:18322'
+        response = requests.get(server + '/noauth/revokeduserkeys/' + auth_id)
         assert response.status_code == 200
         body = json.loads(response.content)
         assert 'revoked_keys_data' in body
         with open('/etc/ssh/revoked-keys', 'w') as f:
-          f.write(base64.b64decode(crl_body['revoked_keys_data']))
+          f.write(base64.b64decode(body['revoked_keys_data']))
 runcmd:
   - dnf install -y python python-requests
   - python /root/setup-ssh.py > /var/log/setup-ssh.log 2>&1
