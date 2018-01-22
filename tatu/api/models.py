@@ -196,7 +196,7 @@ class HostCerts(object):
         except KeyError as e:
             raise falcon.HTTPBadRequest(str(e))
         resp.body = hostToJson(host)
-        resp.status = falcon.HTTP_201
+        resp.status = falcon.HTTP_200
         resp.location = '/hostcerts/' + host.host_id + '/' + host.fingerprint
 
     @falcon.before(validate)

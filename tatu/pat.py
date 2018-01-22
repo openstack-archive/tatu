@@ -88,7 +88,10 @@ def get_port_ip_tuples(instance_id, fixed_lport):
     port_ip_tuples = []
     all_entries = DRAGONFLOW.get_all(PATEntry)
     LOG.debug('Found {} PATEntries: {}'.format(len(all_entries), all_entries))
-    server = NOVA.servers.get(instance_id)
+    try:
+        server = NOVA.servers.get(instance_id)
+    except:
+        return []
     ifaces = server.interface_list()
     for iface in ifaces:
         lport = DRAGONFLOW.get(LogicalPort(id=iface.port_id))
