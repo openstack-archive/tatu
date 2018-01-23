@@ -24,8 +24,8 @@ class SQLAlchemySessionManager(object):
     def __init__(self):
         LOG.info('Creating sqlalchemy engine {}'.format(config.CONF.tatu.sqlalchemy_engine))
         self.engine = create_engine(config.CONF.tatu.sqlalchemy_engine)
-        self.engine.execute("CREATE DATABASE IF NOT EXISTS tatu;")
-        self.engine.execute("USE tatu;")
+        #self.engine.execute("CREATE DATABASE IF NOT EXISTS tatu;")
+        #self.engine.execute("USE tatu;")
         Base.metadata.create_all(self.engine)
         self.Session = scoped_session(sessionmaker(self.engine))
 

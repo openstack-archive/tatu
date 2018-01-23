@@ -149,6 +149,7 @@ class UserCerts(object):
             raise falcon.HTTPBadRequest(str(e))
         resp.status = falcon.HTTP_201
         resp.location = '/usercerts/' + user.user_id + '/' + user.fingerprint
+        resp.body = json.dumps(_userAsDict(user))
 
     @falcon.before(validate)
     def on_get(self, req, resp):

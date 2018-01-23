@@ -77,6 +77,10 @@ class UserCert(Base):
 sa.Index('idx_user_finger', UserCert.user_id, UserCert.fingerprint, unique=True)
 
 
+def getUserCertBySerial(session, serial):
+    return session.query(UserCert).get(serial)
+
+
 def getUserCert(session, user_id, fingerprint):
     return session.query(UserCert).filter(
             UserCert.user_id == user_id).filter(
@@ -138,8 +142,10 @@ def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
     ser = None
     userCert = None
     if serial is not None:
-        userCert = session.query(UserCert).filter(
-            UserCert.serial == serial).one()
+        try:
+            userCert = getUserCertBySerial(session, serial)
+        except Exception:
+            pass
         if userCert is None:
             raise falcon.HTTPBadRequest(
                 "Can't find the certificate for serial # {}".format(serial))

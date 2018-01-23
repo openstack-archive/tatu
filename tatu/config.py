@@ -41,7 +41,7 @@ opts = [
                default='tatu@nono.nono',
                help='Email of admin for DNS zone for PAT bastions'),
     cfg.StrOpt('sqlalchemy_engine',
-               default='mysql+pymysql://root:pinot@127.0.0.1',
+               default='mysql+pymysql://root:pinot@127.0.0.1/tatu',
                help='SQLAlchemy database URL'),
     cfg.StrOpt('auth_url',
                default='http://localhost/identity/v3',
