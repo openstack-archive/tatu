@@ -12,11 +12,19 @@ write_files:
         # Purpose: Fetch a SSH host cert from Tatu and configure SSH to use certs.
         metadata=$(cat /mnt/config/openstack/latest/meta_data.json)
         auth_id=$(echo $metadata | grep -Po 'project_id": "\K[^"]*')
+        if [ -z $auth_id ]; then
+          echo Failed to extract the project ID from metadata
+          exit 1
+        fi
         echo auth_id=$auth_id
         host_id=$(echo $metadata | grep -Po 'uuid": "\K[^"]*')
         echo host_id=$host_id
         vendordata=$(cat /mnt/config/openstack/latest/vendor_data2.json)
         token=$(echo $vendordata | grep -Po 'token": "\K[^"]*')
+        if [ -z $token ]; then
+          echo Failed to extract the Tatu token ID from vendordata
+          exit 1
+        fi
         echo token=$token
         ca_user=$(echo $vendordata | grep -Po 'auth_pub_key_user": "\K[^"]*')
         echo ca_user=$ca_user
@@ -27,25 +35,30 @@ write_files:
         echo host public key is $host_pub_key
         data=$(echo {\"token_id\": \"$token\", \"host_id\": \"$host_id\", \"key.pub\": \"$host_pub_key\"})
         echo $data > /tmp/tatu_cert_request.json
-        url=http://172.24.4.1:18322/noauth/hostcerts
+        url=http://169.254.169.254/noauth/hostcerts
         echo url=$url
         echo Posting Host Certificate request to Tatu API
-        response=$(curl -d "@/tmp/tatu_cert_request.json" -X POST $url)
+        response=$(curl -s -w "%{http_code}" -d "@/tmp/tatu_cert_request.json" -X POST $url)
+        code=${response##*\}}
+        if [ "$code" != "200" ]; then
+          echo Curl to Tatu API failed with code $code
+          exit 1
+        fi
         echo Tatu response is $response
-        cert=$(echo $metadata | grep -Po 'key-cert.pub": "\K[^"]*')
+        cert=$(echo $response | grep -Po 'key-cert.pub": "\K[^"]*')
+        cert=${cert%%\\n} # TODO: fix the trailing \n on the server side.
         echo $cert > /etc/ssh/ssh_host_rsa_key-cert.pub
-        mkdir -p /etc/ssh/ssh_host_rsa_key-cert.pub
         mkdir -p /etc/ssh/auth_principals
         principals_file=/etc/ssh/auth_principals/root
         > $principals_file
         for i in ${principals//,/ }
         do
-            echo $i >> $principals_file
+          echo $i >> $principals_file
         done
-        > /etc/ssh/revoked-keys
         sed -i -e '$aTrustedUserCAKeys /etc/ssh/ca_user.pub' /etc/ssh/sshd_config
         sed -i -e '$aAuthorizedPrincipalsFile /etc/ssh/auth_principals/%u' /etc/ssh/sshd_config
         sed -i -e '$aHostCertificate /etc/ssh/ssh_host_rsa_key-cert.pub' /etc/ssh/sshd_config
+        > /etc/ssh/revoked-keys
         sed -i -e '$aRevokedKeys /etc/ssh/revoked-keys' /etc/ssh/sshd_config
         systemctl restart sshd
   - path: /root/tatu-manage-revoked-keys.sh
@@ -60,8 +73,14 @@ write_files:
         metadata=$(cat /mnt/config/openstack/latest/meta_data.json)
         auth_id=$(echo $metadata | grep -Po 'project_id": "\K[^"]*')
         echo auth_id=$auth_id
-        url=http://172.24.4.1:18322/noauth/revokeduserkeys/$auth_id
-        response=$(curl $url)
+        url=http://169.254.169.254/noauth/revokeduserkeys/$auth_id
+        echo url=$url
+        response=$(curl -s -w "%{http_code}" $url)
+        code=${response##*\}}
+        if [ "$code" != "200" ]; then
+          echo Curl to Tatu API failed with code $code
+          exit 1
+        fi
         echo Tatu response is $response
         b64revoked=$(echo $response | grep -Po 'revoked_keys_data": "\K[^"]*')
         echo $b64revoked | base64 -d > /etc/ssh/revoked-keys
