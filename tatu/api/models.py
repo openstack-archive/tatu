@@ -97,8 +97,8 @@ class Authorities(object):
             host_pub_key = host_key.publickey().exportKey('OpenSSH')
             items.append({
                 'auth_id': auth.auth_id,
-                'user_key.pub': user_pub_key,
-                'host_key.pub': host_pub_key,
+                'ca_user_pub': user_pub_key,
+                'ca_host_pub': host_pub_key,
             })
         body = {'CAs': items}
         resp.body = json.dumps(body)
@@ -118,8 +118,8 @@ class Authority(object):
         host_pub_key = host_key.publickey().exportKey('OpenSSH')
         body = {
             'auth_id': auth_id,
-            'user_key.pub': user_pub_key,
-            'host_key.pub': host_pub_key
+            'ca_user_pub': user_pub_key,
+            'ca_host_pub': host_pub_key
         }
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK
@@ -129,7 +129,7 @@ def _userAsDict(user):
         'user_id': user.user_id,
         'fingerprint': user.fingerprint,
         'auth_id': user.auth_id,
-        'key-cert.pub': user.cert,
+        'cert': user.cert,
         'revoked': user.revoked,
         'serial': user.serial,
     }
@@ -143,7 +143,7 @@ class UserCerts(object):
                 self.session,
                 req.body['user_id'],
                 req.body['auth_id'],
-                req.body['key.pub']
+                req.body['pub_key']
             )
         except KeyError as e:
             raise falcon.HTTPBadRequest(str(e))
@@ -178,7 +178,7 @@ def hostToJson(host):
         'host_id': host.host_id,
         'fingerprint': host.fingerprint,
         'auth_id': host.auth_id,
-        'key-cert.pub': host.cert,
+        'cert': host.cert,
     })
 
 
@@ -192,7 +192,7 @@ class HostCerts(object):
                 self.session,
                 req.body['token_id'],
                 req.body['host_id'],
-                req.body['key.pub']
+                req.body['pub_key']
             )
         except KeyError as e:
             raise falcon.HTTPBadRequest(str(e))
@@ -209,7 +209,7 @@ class HostCerts(object):
                 'host_id': host.host_id,
                 'fingerprint': host.fingerprint,
                 'auth_id': host.auth_id,
-                'key-cert.pub': host.cert,
+                'cert': host.cert,
                 'hostname': host.hostname,
             }
             if CONF.tatu.use_pat_bastions:

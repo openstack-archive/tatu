@@ -49,7 +49,7 @@ server = args.tatu_url
 user = {
     'user_id': user_id,
     'auth_id': auth_id,
-    'key.pub': pubkeytext
+    'pub_key': pubkeytext
 }
 
 response = requests.post(
@@ -65,4 +65,4 @@ location = response.headers['location']
 response = requests.get(server + location)
 usercert = json.loads(response.content)
 
-print usercert['key-cert.pub']
+print usercert['cert']

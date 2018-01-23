@@ -44,7 +44,7 @@ write_files:
         hostcert_request = {
           'token_id': tatu['token'],
           'host_id': instance_id,
-          'key.pub': host_key_pub
+          'pub_key': host_key_pub
         }
         print 'Request the host certificate.'
         response = requests.post(
@@ -70,11 +70,11 @@ write_files:
         assert 'auth_id' in hostcert
         auth_id = str(uuid.UUID(hostcert['auth_id'], version=4))
         assert auth_id == project_id
-        assert 'key-cert.pub' in hostcert
+        assert 'cert' in hostcert
         print 'Begin writing files.'
         # Write the host's certificate
         with open('/etc/ssh/ssh_host_rsa_key-cert.pub', 'w') as f:
-          f.write(hostcert['key-cert.pub'])
+          f.write(hostcert['cert'])
         # Write the authorized principals file
         os.mkdir('/etc/ssh/auth_principals')
         with open('/etc/ssh/auth_principals/root', 'w') as f:

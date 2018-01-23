@@ -33,7 +33,7 @@ write_files:
         echo principals=$principals
         host_pub_key=$(cat /etc/ssh/ssh_host_rsa_key.pub)
         echo host public key is $host_pub_key
-        data=$(echo {\"token_id\": \"$token\", \"host_id\": \"$host_id\", \"key.pub\": \"$host_pub_key\"})
+        data=$(echo {\"token_id\": \"$token\", \"host_id\": \"$host_id\", \"pub_key\": \"$host_pub_key\"})
         echo $data > /tmp/tatu_cert_request.json
         url=http://169.254.169.254/noauth/hostcerts
         echo url=$url
@@ -45,7 +45,7 @@ write_files:
           exit 1
         fi
         echo Tatu response is $response
-        cert=$(echo $response | grep -Po 'key-cert.pub": "\K[^"]*')
+        cert=$(echo $response | grep -Po 'cert": "\K[^"]*')
         cert=${cert%%\\n} # TODO: fix the trailing \n on the server side.
         echo $cert > /etc/ssh/ssh_host_rsa_key-cert.pub
         mkdir -p /etc/ssh/auth_principals

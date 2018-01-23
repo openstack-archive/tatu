@@ -108,10 +108,10 @@ def test_get_authority(client):
     assert response.status == falcon.HTTP_OK
     body = json.loads(response.content)
     assert 'auth_id' in body
-    assert 'user_key.pub' in body
+    assert 'ca_user_pub' in body
     global auth_user_pub_key
-    auth_user_pub_key = body['user_key.pub']
-    assert 'host_key.pub' in body
+    auth_user_pub_key = body['ca_user_pub']
+    assert 'ca_host_pub' in body
     assert 'user_key' not in body
     assert 'host_key' not in body
 
@@ -130,7 +130,7 @@ def user_request(auth=auth_id, user_id=user_id, pub_key=user_pub_key):
     return {
         'user_id': user_id,
         'auth_id': auth,
-        'key.pub': pub_key
+        'pub_key': pub_key
     }
 
 
@@ -157,7 +157,7 @@ def test_post_user(client):
     location = response.headers['location'].split('/')
     assert location[1] == 'usercerts'
     assert location[2] == body['user_id']
-    assert location[3] == sshpubkeys.SSHKey(body['key.pub']).hash_md5()
+    assert location[3] == sshpubkeys.SSHKey(body['pub_key']).hash_md5()
 
 
 @pytest.mark.dependency(depends=['test_post_user'])
@@ -169,7 +169,7 @@ def test_get_user(client):
     assert 'user_id' in body
     assert 'fingerprint' in body
     assert 'auth_id' in body
-    assert 'key-cert.pub' in body
+    assert 'cert' in body
     assert body['auth_id'] == auth_id
 
 
@@ -227,7 +227,7 @@ def host_request(token, host=host_id, pub_key=host_pub_key):
     return {
         'token_id': token,
         'host_id': host,
-        'key.pub': pub_key
+        'pub_key': pub_key
     }
 
 
@@ -394,7 +394,7 @@ def test_get_host(client):
     assert 'host_id' in body
     assert 'fingerprint' in body
     assert 'auth_id' in body
-    assert 'key-cert.pub' in body
+    assert 'cert' in body
     assert body['host_id'] == host_id
     assert body['fingerprint'] == host_fingerprint
     assert body['auth_id'] == auth_id

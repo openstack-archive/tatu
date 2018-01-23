@@ -33,7 +33,7 @@ def host_request(token, host, pub_key):
     return {
         'token_id': token,
         'host_id': host,
-        'key.pub': pub_key
+        'pub_key': pub_key
     }
 
 
@@ -52,9 +52,9 @@ def test_host_certificate_generation():
     auth = json.loads(response.content)
     assert 'auth_id' in auth
     assert auth['auth_id'] == project_id
-    assert 'user_key.pub' in auth
-    assert 'host_key.pub' in auth
-    ca_user = auth['user_key.pub']
+    assert 'ca_user_pub' in auth
+    assert 'ca_host_pub' in auth
+    ca_user = auth['ca_user_pub']
 
     key = RSA.generate(2048)
     pub_key = key.publickey().exportKey('OpenSSH')
@@ -110,4 +110,4 @@ def test_host_certificate_generation():
         assert 'auth_id' in hostcert
         auth_id = str(uuid.UUID(hostcert['auth_id'], version=4))
         assert auth_id == project_id
-        assert 'key-cert.pub' in hostcert
+        assert 'cert' in hostcert
