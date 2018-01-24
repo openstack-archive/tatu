@@ -78,7 +78,10 @@ sa.Index('idx_user_finger', UserCert.user_id, UserCert.fingerprint, unique=True)
 
 
 def getUserCertBySerial(session, serial):
-    return session.query(UserCert).get(serial)
+    try:
+        return session.query(UserCert).get(serial)
+    except Exception:
+        return None
 
 
 def getUserCert(session, user_id, fingerprint):

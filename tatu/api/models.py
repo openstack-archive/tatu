@@ -164,8 +164,8 @@ class UserCerts(object):
 
 class UserCert(object):
     @falcon.before(validate)
-    def on_get(self, req, resp, user_id, fingerprint):
-        user = db.getUserCert(self.session, user_id, fingerprint)
+    def on_get(self, req, resp, serial):
+        user = db.getUserCertBySerial(self.session, serial)
         if user is None:
             resp.status = falcon.HTTP_NOT_FOUND
             return
@@ -316,3 +316,4 @@ class RevokedUserKeys(object):
             cert=req.body.get('cert', None)
         )
         resp.status = falcon.HTTP_OK
+        resp.body = json.dumps({})
