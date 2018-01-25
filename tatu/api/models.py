@@ -97,8 +97,8 @@ class Authorities(object):
             host_pub_key = host_key.publickey().exportKey('OpenSSH')
             items.append({
                 'auth_id': auth.auth_id,
-                'ca_user_pub': user_pub_key,
-                'ca_host_pub': host_pub_key,
+                'user_pub_key': user_pub_key,
+                'host_pub_key': host_pub_key,
             })
         body = {'CAs': items}
         resp.body = json.dumps(body)
@@ -118,8 +118,8 @@ class Authority(object):
         host_pub_key = host_key.publickey().exportKey('OpenSSH')
         body = {
             'auth_id': auth_id,
-            'ca_user_pub': user_pub_key,
-            'ca_host_pub': host_pub_key
+            'user_pub_key': user_pub_key,
+            'host_pub_key': host_pub_key
         }
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK

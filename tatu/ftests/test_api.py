@@ -52,9 +52,9 @@ def test_host_certificate_generation():
     auth = json.loads(response.content)
     assert 'auth_id' in auth
     assert auth['auth_id'] == project_id
-    assert 'ca_user_pub' in auth
-    assert 'ca_host_pub' in auth
-    ca_user = auth['ca_user_pub']
+    assert 'user_pub_key' in auth
+    assert 'host_pub_key' in auth
+    ca_user = auth['user_pub_key']
 
     key = RSA.generate(2048)
     pub_key = key.publickey().exportKey('OpenSSH')

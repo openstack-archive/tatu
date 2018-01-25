@@ -108,10 +108,10 @@ def test_get_authority(client):
     assert response.status == falcon.HTTP_OK
     body = json.loads(response.content)
     assert 'auth_id' in body
-    assert 'ca_user_pub' in body
+    assert 'user_pub_key' in body
     global auth_user_pub_key
-    auth_user_pub_key = body['ca_user_pub']
-    assert 'ca_host_pub' in body
+    auth_user_pub_key = body['user_pub_key']
+    assert 'host_pub_key' in body
     assert 'user_key' not in body
     assert 'host_key' not in body
 
