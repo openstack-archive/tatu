@@ -173,13 +173,20 @@ class UserCert(object):
         resp.status = falcon.HTTP_OK
 
 
-def hostToJson(host):
-    return json.dumps({
+def _hostAsDict(host):
+    item = {
         'host_id': host.host_id,
         'fingerprint': host.fingerprint,
         'auth_id': host.auth_id,
         'cert': host.cert,
-    })
+        'hostname': host.hostname,
+    }
+    if CONF.tatu.use_pat_bastions:
+        item['pat_bastions'] = ','.join(
+            '{}:{}'.format(t[1], t[0]) for t in
+            get_port_ip_tuples(host.host_id, 22))
+        item['srv_url'] = get_srv_url(host.hostname, host.auth_id)
+    return item
 
 
 class HostCerts(object):
@@ -196,7 +203,7 @@ class HostCerts(object):
             )
         except KeyError as e:
             raise falcon.HTTPBadRequest(str(e))
-        resp.body = hostToJson(host)
+        resp.body = json.dumps(_hostAsDict(host))
         resp.status = falcon.HTTP_200
         resp.location = '/hostcerts/' + host.host_id + '/' + host.fingerprint
 
@@ -205,20 +212,7 @@ class HostCerts(object):
         hosts = db.getHostCerts(self.session)
         items = []
         for host in hosts:
-            item = {
-                'host_id': host.host_id,
-                'fingerprint': host.fingerprint,
-                'auth_id': host.auth_id,
-                'cert': host.cert,
-                'hostname': host.hostname,
-            }
-            if CONF.tatu.use_pat_bastions:
-                item['pat_bastions'] = ','.join(
-                    '{}:{}'.format(t[1], t[0]) for t in
-                    get_port_ip_tuples(host.host_id, 22))
-                item['srv_url'] = get_srv_url(host.hostname, host.auth_id)
-            items.append(item)
-
+            items.append(_hostAsDict(host))
         body = {'hosts': items}
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK
@@ -231,7 +225,7 @@ class HostCert(object):
         if host is None:
             resp.status = falcon.HTTP_NOT_FOUND
             return
-        resp.body = hostToJson(host)
+        resp.body = json.dumps(_hostAsDict(host))
         resp.status = falcon.HTTP_OK
 
 
