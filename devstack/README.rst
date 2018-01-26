@@ -15,6 +15,6 @@ repository.  See contrib/vagrant to create a vagrant VM.
 
      > cat local.conf
      [[local|localrc]]
-     enable_plugin designate https://git.openstack.org/openstack/designate
+     enable_plugin tatu https://github.com/pinodeca/tatu
 
 3. run ``stack.sh``
