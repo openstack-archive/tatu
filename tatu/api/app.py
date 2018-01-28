@@ -18,23 +18,31 @@ from tatu.db.persistence import SQLAlchemySessionManager
 LOG = logging.getLogger(__name__)
 
 def create_app(sa):
-    LOG.info("Creating falcon API instance.")
+    LOG.info("Creating falcon API instance for authenticated API calls.")
     api = falcon.API(middleware=[models.Logger(), sa])
     api.add_route('/authorities', models.Authorities())
     api.add_route('/authorities/{auth_id}', models.Authority())
     api.add_route('/usercerts', models.UserCerts())
     api.add_route('/usercerts/{serial}', models.UserCert())
+    api.add_route('/hosts', models.Hosts())
+    api.add_route('/hosts/{host_id}', models.Host())
     api.add_route('/hostcerts', models.HostCerts())
     api.add_route('/hostcerts/{host_id}/{fingerprint}', models.HostCert())
     api.add_route('/hosttokens', models.Tokens())
     api.add_route('/novavendordata', models.NovaVendorData())
     api.add_route('/revokeduserkeys/{auth_id}', models.RevokedUserKeys())
+    api.add_route('/pats', models.PATs())
     return api
 
+def create_noauth_app(sa):
+    LOG.info("Creating falcon API instance for unauthenticated API calls.")
+    api = falcon.API(middleware=[models.Logger(), sa])
+    api.add_route('/hostcerts', models.HostCerts())
+    api.add_route('/revokeduserkeys/{auth_id}', models.RevokedUserKeys())
+    return api
 
-def get_app():
+def auth_factory(global_config, **settings):
     return create_app(SQLAlchemySessionManager())
 
-
-def main(global_config, **settings):
-    return create_app(SQLAlchemySessionManager())
+def noauth_factory(global_config, **settings):
+    return create_noauth_app(SQLAlchemySessionManager())

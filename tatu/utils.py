@@ -19,10 +19,23 @@ from tempfile import mkdtemp
 
 
 def random_uuid():
-    return str(uuid.uuid4())
+    return uuid.uuid4().hex
 
 
-def generateCert(auth_key, entity_key, user=True, principals='root', serial=0):
+def dash_uuid(id):
+    return str(uuid.UUID(id, version=4))
+
+
+def canonical_uuid_string(id):
+    return uuid.UUID(id, version=4).hex
+
+
+def datetime_to_string(dt):
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def generateCert(auth_key, entity_key, user=True, principal_list=[], serial=0,
+                 days_valid=180, identity=''):
     # Temporarily write the authority private key, entity public key to files
     temp_dir = mkdtemp()
     ca_file = '/'.join([temp_dir, 'ca_key'])
@@ -36,16 +49,21 @@ def generateCert(auth_key, entity_key, user=True, principals='root', serial=0):
             text_file.write(auth_key)
         with open(pub_file, "w", 0o644) as text_file:
             text_file.write(entity_key)
-        args = ['ssh-keygen', '-s', ca_file, '-I', 'testID', '-V',
-                '-1d:+365d', '-z', str(serial)]
-        if user:
-            args.extend(['-n', principals, pub_file])
-        else:
-            args.extend(['-h', pub_file])
+        args = ['ssh-keygen', '-s', ca_file,
+                '-V', '-1d:+{}d'.format(days_valid)]
+        if serial:
+            args.extend(['-z', str(serial)])
+        if identity:
+            args.extend(['-I', '{}_{}'.format(identity, serial)])
+        if principal_list:
+            args.extend(['-n', ','.join(principal_list)])
+        if not user:
+            args.append('-h')
+        args.append(pub_file)
         subprocess.check_output(args, stderr=subprocess.STDOUT)
         # Read the contents of the certificate file
         with open(cert_file, 'r') as text_file:
-            cert = text_file.read()
+            cert = text_file.read().strip('\n')
     finally:
         shutil.rmtree(temp_dir)
     return cert

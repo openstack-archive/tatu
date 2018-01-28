@@ -10,7 +10,6 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import os
 from designateclient.exceptions import Conflict
 from oslo_log import log as logging
 
@@ -48,24 +47,30 @@ def sync_bastions(ip_addresses):
         register_bastion(ip)
 
 
-def get_srv_url(hostname, project_id):
-    return '_ssh._tcp.{}.{}.{}'.format(hostname, project_id[:8], ZONE['name'])
+def get_srv_url(hostname, project):
+    return '_ssh._tcp.{}.{}.{}'.format(hostname, project, ZONE['name'])
 
 
-def add_srv_records(hostname, project_id, port_ip_tuples):
+def delete_srv_records(srv_url):
+    try:
+        DESIGNATE.recordsets.delete(ZONE['id'], srv_url)
+    except:
+        pass
+
+
+def add_srv_records(hostname, project, ip_port_tuples):
     records = []
-    for port, ip in port_ip_tuples:
+    for ip, port in ip_port_tuples:
         bastion = bastion_name_from_ip(ip)
         # SRV record format is: priority weight port A-name
         records.append(
             '10 50 {} {}'.format(port, bastion))
-
+    srv_url = get_srv_url(hostname, project)
     try:
-        DESIGNATE.recordsets.create(ZONE['id'],
-                                    get_srv_url(hostname, project_id),
-                                    'SRV', records)
+        DESIGNATE.recordsets.create(ZONE['id'], srv_url, 'SRV', records)
     except Conflict:
         pass
+    return  srv_url
 
 
 _setup_zone()

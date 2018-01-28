@@ -91,9 +91,6 @@ function configure_tatu {
     if [ "$LOG_COLOR" == "True" ] && [ "$SYSLOG" == "False" ]; then
         setup_colorized_logging_tatu $TATU_CONF DEFAULT "tenant" "user"
     fi
-
-    # Backend Plugin Configuation
-    configure_tatu_backend
 }
 
 function configure_tatudashboard {
@@ -137,27 +134,14 @@ function init_tatu {
 
 # install_tatu - Collect source and prepare
 function install_tatu {
-    if is_ubuntu; then
-        install_package libcap2-bin
-    elif is_fedora; then
-        # bind-utils package provides `dig`
-        install_package libcap bind-utils
-    fi
-
     git_clone $TATU_REPO $TATU_DIR $TATU_BRANCH
     setup_develop $TATU_DIR
-
-    install_tatu_backend
 }
 
 # install_tatuclient - Collect source and prepare
 function install_tatuclient {
-    if use_library_from_git "python-tatuclient"; then
-        git_clone_by_name "python-tatuclient"
-        setup_dev_lib "python-tatuclient"
-    else
-        pip_install_gr "python-tatuclient"
-    fi
+    git_clone_by_name "python-tatuclient"
+    setup_dev_lib "python-tatuclient"
 }
 
 # install_tatudashboard - Collect source and prepare

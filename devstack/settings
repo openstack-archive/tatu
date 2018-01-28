@@ -35,14 +35,15 @@ TATU_ROOTWRAP_CONF=$TATU_CONF_DIR/rootwrap.conf
 TATU_APIPASTE_CONF=$TATU_CONF_DIR/api-paste.ini
 
 # Default repositories
-TATU_REPO=${TATU_REPO:-${GIT_BASE}/pinodeca/tatu.git}
+TATU_GIT_BASE=https://github.com
+TATU_REPO=${TATU_REPO:-${TATU_GIT_BASE}/pinodeca/tatu.git}
 TATU_BRANCH=${TATU_BRANCH:-master}
 
-GITREPO["tatu-dashboard"]=${TATUDASHBOARD_REPO:-${GIT_BASE}/pinodeca/tatu-dashboard.git}
+GITREPO["tatu-dashboard"]=${TATUDASHBOARD_REPO:-${TATU_GIT_BASE}/pinodeca/tatu-dashboard.git}
 GITBRANCH["tatu-dashboard"]=${TATUDASHBOARD_BRANCH:-master}
 GITDIR["tatu-dashboard"]=$DEST/tatu-dashboard
 
-GITREPO["python-tatuclient"]=${TATUCLIENT_REPO:-${GIT_BASE}/pinodeca/python-tatuclient.git}
+GITREPO["python-tatuclient"]=${TATUCLIENT_REPO:-${TATU_GIT_BASE}/pinodeca/python-tatuclient.git}
 GITBRANCH["python-tatuclient"]=${TATUCLIENT_BRANCH:-master}
 GITDIR["python-tatuclient"]=$DEST/python-tatuclient
 

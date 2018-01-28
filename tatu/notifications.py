@@ -10,32 +10,38 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging
 from oslo_serialization import jsonutils
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 import sys
-from tatu import config # sets up all required config
 import time
 import uuid
 
-from tatu.db.models import createAuthority
-from tatu.db.persistence import get_url
+from tatu import ks_utils
+from tatu.config import CONF
+from tatu.config import KEYSTONE as ks
+from tatu.config import NOVA as nova
+from tatu.db import models as db
+from tatu.dns import delete_srv_records
+from tatu.pat import deletePatEntries, string_to_ip_port_tuples
+from tatu.utils import canonical_uuid_string
 
 LOG = logging.getLogger(__name__)
 
 
 class NotificationEndpoint(object):
     filter_rule = oslo_messaging.NotificationFilter(
-        publisher_id='^identity.*',
-        event_type='^identity.project.created')
+        publisher_id='^identity.*|^compute.*',
+        event_type='^identity.project.(created|deleted)|'
+                   '^identity.user.deleted|'
+                   '^identity.role_assignment.deleted|'
+                   '^compute.instance.delete.end')
+    #TODO(pino): what about user removal from a project? (rather than deletion)
 
-    def __init__(self):
-        self.engine = create_engine(get_url())
-        # Base.metadata.create_all(self.engine)
-        self.Session = scoped_session(sessionmaker(self.engine))
+    def __init__(self, engine):
+        self.Session = scoped_session(sessionmaker(engine))
 
     def info(self, ctxt, publisher_id, event_type, payload, metadata):
         LOG.debug('notification:')
@@ -44,36 +50,168 @@ class NotificationEndpoint(object):
         LOG.debug("publisher: %s, event: %s, metadata: %s", publisher_id,
                   event_type, metadata)
 
+        se = self.Session()
         if event_type == 'identity.project.created':
-            proj_id = payload.get('resource_info')
-            LOG.debug("New project with ID {} created "
-                      "in Keystone".format(proj_id))
-            se = self.Session()
+            proj_id = canonical_uuid_string(payload.get('resource_info'))
+            name = ks_utils.getProjectNameForID(proj_id)
+            _createAuthority(self.Session, proj_id, name)
+        elif event_type == 'identity.project.deleted':
+            # Assume all the users and instances must have been removed.
+            proj_id = canonical_uuid_string(payload.get('resource_info'))
+            _deleteAuthority(self.Session,
+                             db.getAuthority(self.Session(), proj_id))
+        elif event_type ==  'identity.role_assignment.deleted':
+            users = []
+            if 'user' in payload:
+                users = [payload['user']]
+            else:
+                users = ks_utils.getUserIdsByGroupId(payload['group'])
+            # TODO: look for domain if project isn't available
+            proj_id = payload['project']
+            for user_id in users:
+                try:
+                    db.revokeUserCertsInProject(se, user_id, proj_id)
+                except Exception as e:
+                    LOG.error(
+                        "Failed to revoke user {} certificates in project {} "
+                        "after role assignment change, due to exception {}"
+                            .format(user_id, proj_id, e))
+                    se.rollback()
+                    self.Session.remove()
+        elif event_type ==  'identity.user.deleted':
+            user_id = payload.get('resource_info')
+            LOG.debug("User with ID {} deleted "
+                      "in Keystone".format(user_id))
             try:
-                auth_id = str(uuid.UUID(proj_id, version=4))
-                createAuthority(se, auth_id)
+                db.revokeUserCerts(se, user_id)
+                # TODO(pino): also prevent generating new certs for this user?
             except Exception as e:
                 LOG.error(
-                    "Failed to create Tatu CA for new project with ID {} "
-                    "due to exception {}".format(proj_id, e))
+                    "Failed to revoke all certs for deleted user with ID {} "
+                    "due to exception {}".format(user_id, e))
                 se.rollback()
                 self.Session.remove()
+        elif event_type == 'compute.instance.delete.end':
+            instance_id = payload.get('instance_id')
+            host = db.getHost(se, instance_id)
+            if host is not None:
+                _deleteHost(self.Session, host)
+            # TODO(Pino): record the deletion to prevent new certs generation?
+            pass
         else:
-            LOG.error("Status update or unknown")
+            LOG.error("Unknown update.")
 
 
-# TODO(pino): listen to host delete notifications, clean up PATs and DNS
-# TODO(pino): Listen to user deletions and revoke their certs
+def _createAuthority(session_factory, auth_id, name):
+    se = session_factory()
+    if db.getAuthority(se, auth_id) is not None:
+        return
+    try:
+        db.createAuthority(se, auth_id, name)
+        LOG.info("Created CA for project {} with ID {}".format(name, auth_id))
+    except Exception as e:
+        LOG.error(
+            "Failed to create CA for project {} with ID {} "
+            "due to exception {}".format(name, auth_id, e))
+        se.rollback()
+        session_factory.remove()
+
+
+def _deleteAuthority(session_factory, auth):
+    se = session_factory()
+    try:
+        LOG.info(
+            "Deleting CA for project {} with ID {} - not in Keystone"
+                .format(auth.name, auth.auth_id))
+        db.deleteAuthority(se, auth.auth_id)
+    except Exception as e:
+        LOG.error(
+            "Failed to delete Tatu CA for project {} with ID {} "
+            "due to exception {}".format(proj.name, auth_id, e))
+        se.rollback()
+        session_factory.remove()
+
+
+def _deleteHost(session_factory, host):
+    LOG.debug("Clean up DNS and PAT for deleted instance {} with ID {}"
+              .format(host.name, host.id))
+    delete_srv_records(host.srv_url)
+    deletePatEntries(string_to_ip_port_tuples(host.pat_bastions))
+    se = session_factory()
+    try:
+        LOG.info(
+            "Deleting Host {} with ID {} - not in Keystone"
+                .format(host.name, host.id))
+        se.delete(host)
+        se.commit()
+    except:
+        LOG.error(
+            "Failed to delete Host {} with ID {} - not in Keystone"
+                .format(host.name, host.id))
+        se.rollback()
+        session_factory.remove()
+
+
+def sync(engine):
+    session_factory = scoped_session(sessionmaker(engine))
+    ks_project_ids = set()
+    LOG.info("Add CAs for new projects in Keystone.")
+    for proj in ks.projects.list():
+        ks_project_ids.add(canonical_uuid_string(proj.id))
+        _createAuthority(session_factory,
+                         canonical_uuid_string(proj.id),
+                         proj.name)
+
+    # Iterate through all CAs in Tatu. Delete any that don't have a
+    # corresponding project in Keystone.
+    LOG.info("Remove CAs for projects that were deleted from Keystone.")
+    for auth in db.getAuthorities(session_factory()):
+        if auth.auth_id not in ks_project_ids:
+            _deleteAuthority(session_factory, auth)
+
+    ks_user_ids = set()
+    for user in ks.users.list():
+        ks_user_ids.add(user.id)
+
+    LOG.info("Revoke user certificates if user was deleted or lost a role.")
+    for cert in db.getUserCerts(session_factory()):
+        # Invalidate the cert if the user was removed from Keystone
+        if cert.user_id not in ks_user_ids:
+            db.revokeUserCert(cert)
+            continue
+
+        # Invalidate the cert if it has any principals that aren't current
+        p = ks_utils.getProjectRoleNamesForUser(cert.auth_id, cert.user_id)
+        cert_p = cert.principals.split(",")
+        if len(set(cert_p) - set(p)) > 0:
+            se = session_factory()
+            db.revokeUserCert(cert)
+
+    # Iterate through all the instance IDs in Tatu. Clean up DNS and PAT for
+    # any that no longer exist in Nova.
+    LOG.info("Delete DNS and PAT resources of any server that was deleted.")
+    instance_ids = set()
+    for instance in nova.servers.list(search_opts={'all_tenants': True}):
+        instance_ids.add(instance.id)
+    for host in db.getHosts(session_factory()):
+        if host.id not in instance_ids:
+            _deleteHost(session_factory, host)
+
 
 def main():
-    transport = oslo_messaging.get_notification_transport(cfg.CONF)
+    transport = oslo_messaging.get_notification_transport(CONF)
     targets = [oslo_messaging.Target(topic='notifications')]
-    endpoints = [NotificationEndpoint()]
+    storage_engine = create_engine(CONF.tatu.sqlalchemy_engine)
+
+    endpoints = [NotificationEndpoint(storage_engine)]
 
     server = oslo_messaging.get_notification_listener(transport,
                                                       targets,
                                                       endpoints,
                                                       executor='threading')
+
+    # At startup, do an overall sync.
+    sync(storage_engine)
 
     LOG.info("Starting notification watcher daemon")
     server.start()

@@ -20,9 +20,16 @@ import random
 from tatu import dns
 from tatu.config import CONF, NEUTRON, NOVA, DRAGONFLOW
 from tatu.db import models as tatu_db
+from tatu.utils import dash_uuid
 
 LOG = logging.getLogger(__name__)
+#TODO(pino): periodically refresh this list
 PATS = DRAGONFLOW.get_all(PAT)
+
+
+def getAllPats():
+    return DRAGONFLOW.get_all(PAT)
+
 
 def _sync_pats():
     # TODO(pino): re-bind PATs when hypervisors fail (here and on notification)
@@ -84,34 +91,27 @@ def _df_find_lrouter_by_lport(lport):
     return None
 
 
-def get_port_ip_tuples(instance_id, fixed_lport):
-    port_ip_tuples = []
-    all_entries = DRAGONFLOW.get_all(PATEntry)
-    LOG.debug('Found {} PATEntries: {}'.format(len(all_entries), all_entries))
-    try:
-        server = NOVA.servers.get(instance_id)
-    except:
-        return []
-    ifaces = server.interface_list()
-    for iface in ifaces:
-        lport = DRAGONFLOW.get(LogicalPort(id=iface.port_id))
-        lrouter = _df_find_lrouter_by_lport(lport)
-        if lrouter is None: continue
-        for entry in all_entries:
-            if entry.lport.id == lport.id and entry.fixed_l4_port == fixed_lport:
-                pat =  DRAGONFLOW.get(PAT(id=entry.pat.id))
-                port_ip_tuples.append((entry.pat_l4_port, str(pat.ip_address)))
-        if port_ip_tuples: break
-    return port_ip_tuples
+def ip_port_tuples_to_string(tuples):
+    return ','.join('{}:{}'.format(t[0], t[1]) for t in tuples)
 
 
-def create_pat_entries(sql_session, instance_id, fixed_l4_port,
+def string_to_ip_port_tuples(s):
+    return [tuple(ip_port.split(':')) for ip_port in s.split(',')]
+
+def deletePatEntries(ip_port_tuples):
+    LOG.debug("Delete PATEntry for each of tuples: {}".format(ip_port_tuples))
+    pat_entries = DRAGONFLOW.get_all(PATEntry)
+    tuples = set(ip_port_tuples)
+    for entry in pat_entries:
+        if (entry.pat.id, entry.pat_l4_port) in tuples:
+            DRAGONFLOW.delete(entry)
+
+
+def create_pat_entries(sql_session, instance_id,
+                       fixed_l4_port=CONF.tatu.ssh_port,
                        num=CONF.tatu.num_pat_bastions_per_server):
-    port_ip_tuples = get_port_ip_tuples(instance_id, fixed_l4_port)
-    LOG.debug('Found {} tuples: {}'.format(len(port_ip_tuples), port_ip_tuples))
-    if port_ip_tuples: return port_ip_tuples
-    LOG.debug('Creating new tuples.')
-    server = NOVA.servers.get(instance_id)
+    ip_port_tuples = []
+    server = NOVA.servers.get(dash_uuid(instance_id))
     ifaces = server.interface_list()
     for iface in ifaces:
         lport = DRAGONFLOW.get(LogicalPort(id=iface.port_id))
@@ -135,10 +135,10 @@ def create_pat_entries(sql_session, instance_id, fixed_l4_port,
                 lrouter = lrouter,
             )
             DRAGONFLOW.create(pat_entry)
-            port_ip_tuples.append((pat_l4_port, str(pat.ip_address)))
+            ip_port_tuples.append((str(pat.ip_address), pat_l4_port))
         # if we got here, we now have the required pat_entries
         break
-    return port_ip_tuples
+    return ip_port_tuples
 
 
 _sync_pats()

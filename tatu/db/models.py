@@ -11,7 +11,7 @@
 #    under the License.
 
 from Crypto.PublicKey import RSA
-from datetime import datetime
+from datetime import datetime, timedelta
 import falcon
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
@@ -19,7 +19,8 @@ from sqlalchemy.ext.declarative import declarative_base
 import sshpubkeys
 
 from tatu.castellano import get_secret, store_secret
-from tatu.utils import generateCert, revokedKeysBase64, random_uuid
+from tatu.ks_utils import getProjectRoleNamesForUser
+from tatu.utils import canonical_uuid_string, generateCert, revokedKeysBase64, random_uuid
 
 Base = declarative_base()
 
@@ -28,8 +29,11 @@ class Authority(Base):
     __tablename__ = 'authorities'
 
     auth_id = sa.Column(sa.String(36), primary_key=True)
+    name = sa.Column(sa.String(36))
     user_key = sa.Column(sa.Text)
     host_key = sa.Column(sa.Text)
+    user_pub_key = sa.Column(sa.Text)
+    host_pub_key = sa.Column(sa.Text)
 
 
 def getAuthority(session, auth_id):
@@ -40,22 +44,28 @@ def getAuthorities(session):
     return session.query(Authority)
 
 
-def getAuthUserKey(auth):
-    return get_secret(auth.user_key)
-
-
 def getAuthHostKey(auth):
-    return get_secret(auth.host_key)
+    return
 
 
-def createAuthority(session, auth_id):
-    user_key = RSA.generate(2048).exportKey('PEM')
+def _newPubPrivKeyPair():
+    k = RSA.generate(2048)
+    return k.publickey().exportKey('OpenSSH'), k.exportKey('PEM')
+
+
+def createAuthority(session, auth_id, name):
+    user_pub_key, user_key = _newPubPrivKeyPair()
     user_secret_id = store_secret(user_key)
-    host_key = RSA.generate(2048).exportKey('PEM')
+    host_pub_key, host_key = _newPubPrivKeyPair()
     host_secret_id = store_secret(host_key)
-    auth = Authority(auth_id=auth_id,
-                     user_key=user_secret_id,
-                     host_key=host_secret_id)
+    auth = Authority(
+        auth_id=auth_id,
+        name=name,
+        user_key=user_secret_id,
+        host_key=host_secret_id,
+        user_pub_key = user_pub_key,
+        host_pub_key = host_pub_key,
+    )
     session.add(auth)
     try:
         session.commit()
@@ -64,10 +74,20 @@ def createAuthority(session, auth_id):
     return auth
 
 
+def deleteAuthority(session, auth_id):
+    session.delete(getAuthority(session, auth_id))
+    session.commit()
+
+
 class UserCert(Base):
     __tablename__ = 'user_certs'
 
     serial = sa.Column(sa.Integer, primary_key=True, autoincrement=True)
+    user_name = sa.Column(sa.String(20))
+    principals = sa.Column(sa.String(100))
+    created_at = sa.Column(sa.DateTime, default=lambda: datetime.utcnow())
+    expires_at = sa.Column(sa.DateTime, default=lambda: datetime.utcnow()
+                                                        + timedelta(days=365))
     user_id = sa.Column(sa.String(36))
     fingerprint = sa.Column(sa.String(60))
     auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
@@ -94,7 +114,7 @@ def getUserCerts(session):
     return session.query(UserCert)
 
 
-def createUserCert(session, user_id, auth_id, pub):
+def createUserCert(session, user_id, user_name, auth_id, pub):
     # Retrieve the authority's private key and generate the certificate
     auth = getAuthority(session, auth_id)
     if auth is None:
@@ -104,15 +124,20 @@ def createUserCert(session, user_id, auth_id, pub):
     certRecord = getUserCert(session, user_id, fingerprint)
     if certRecord is not None:
         return certRecord
+    principals = getProjectRoleNamesForUser(auth_id, user_id)
     user = UserCert(
         user_id=user_id,
+        user_name=user_name,
+        principals=','.join(principals),
         fingerprint=fingerprint,
         auth_id=auth_id,
     )
     session.add(user)
     session.flush()
-    user.cert = generateCert(getAuthUserKey(auth), pub, user=True,
-                        principals='admin,root', serial=user.serial)
+    user.cert = generateCert(
+        get_secret(auth.user_key), pub, user=True, principal_list=principals,
+        serial=user.serial, days_valid=365, identity=user_name
+    )
     if user.cert is None:
         raise falcon.HTTPInternalServerError(
             "Failed to generate the certificate")
@@ -136,9 +161,32 @@ def getRevokedKeysBase64(session, auth_id):
             description='No Authority found with that ID')
     serials = [k.serial for k in session.query(RevokedKey).filter(
         RevokedKey.auth_id == auth_id)]
-    user_key = RSA.importKey(getAuthUserKey(auth))
-    user_pub_key = user_key.publickey().exportKey('OpenSSH')
-    return revokedKeysBase64(user_pub_key, serials)
+    return revokedKeysBase64(auth.user_pub_key, serials)
+
+
+def revokeUserCert(session, cert):
+    cert.revoked = True
+    session.add(cert)
+    session.add(db.RevokedKey(cert.auth_id, serial=cert.serial))
+    session.commit()
+
+
+def revokeUserCerts(session, user_id):
+    # TODO(Pino): send an SQL statement instead of retrieving and iterating?
+    for u in session.query(UserCert).filter(UserCert.user_id == user_id):
+        u.revoked = True
+        session.add(u)
+        session.add(RevokedKey(u.auth_id, serial=u.serial))
+    session.commit()
+
+
+def revokeUserCertsInProject(session, user_id, project_id):
+    # TODO(Pino): send an SQL statement instead of retrieving and iterating?
+    for u in session.query(UserCert).filter(UserCert.user_id == user_id).filter(UserCert.auth_id == project_id):
+        u.revoked = True
+        session.add(u)
+        session.add(RevokedKey(u.auth_id, serial=u.serial))
+    session.commit()
 
 
 def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
@@ -156,12 +204,6 @@ def revokeUserKey(session, auth_id, serial=None, key_id=None, cert=None):
             raise falcon.HTTPBadRequest(
                 "Incorrect CA ID for serial # {}".format(serial))
         ser = serial
-    elif key_id is not None:
-        # TODO(pino): look up the UserCert by key id and get the serial number
-        pass
-    elif cert is not None:
-        # TODO(pino): Decode the cert, validate against UserCert and get serial
-        pass
 
     if ser is None or userCert is None:
         raise falcon.HTTPBadRequest("Cannot identify which Cert to revoke.")
@@ -208,11 +250,47 @@ def createToken(session, host_id, auth_id, hostname):
     return token
 
 
+class Host(Base):
+    __tablename__ = 'hosts'
+
+    id = sa.Column(sa.String(36), primary_key=True)
+    name = sa.Column(sa.String(36))
+    pat_bastions = sa.Column(sa.String(70)) # max 3 ip:port pairs
+    srv_url = sa.Column(sa.String(100)) # _ssh._tcp.<host>.<project>.<zone>
+
+
+def createHost(session, id, name, pat_bastions, srv_url):
+    host = Host(id=id, name=name, pat_bastions=pat_bastions, srv_url=srv_url)
+    session.add(host)
+    try:
+        session.commit()
+    except IntegrityError:
+        raise falcon.HTTPConflict("Failed to create SSH host record for {}."
+                                  .format(name))
+    return host
+
+
+def getHost(session, id):
+    return session.query(Host).get(id)
+
+
+def getHosts(session):
+    return session.query(Host)
+
+
+def deleteHost(session, host):
+    session.delete(host)
+    session.commit()
+
+
 class HostCert(Base):
     __tablename__ = 'host_certs'
 
     host_id = sa.Column(sa.String(36), primary_key=True)
     fingerprint = sa.Column(sa.String(60), primary_key=True)
+    created_at = sa.Column(sa.DateTime, default=lambda: datetime.utcnow())
+    expires_at = sa.Column(sa.DateTime, default=lambda: datetime.utcnow()
+                                                        + timedelta(days=365))
     auth_id = sa.Column(sa.String(36), sa.ForeignKey('authorities.auth_id'))
     token_id = sa.Column(sa.String(36), sa.ForeignKey('tokens.token_id'))
     pubkey = sa.Column(sa.Text)
@@ -258,7 +336,8 @@ def createHostCert(session, token_id, host_id, pub):
     certRecord = session.query(HostCert).get([host_id, fingerprint])
     if certRecord is not None:
         raise falcon.HTTPConflict('This public key is already signed.')
-    cert = generateCert(getAuthHostKey(auth), pub, user=False)
+    cert = generateCert(get_secret(auth.host_key), pub, user=False,
+                        days_valid=365, identity=token.hostname)
     if cert == '':
         raise falcon.HTTPInternalServerError(
             "Failed to generate the certificate")

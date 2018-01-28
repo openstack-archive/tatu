@@ -15,6 +15,7 @@ from dragonflow import conf as dragonflow_cfg
 from dragonflow.db import api_nb
 from keystoneauth1 import session as keystone_session
 from keystoneauth1.identity import v3
+from keystoneclient.v3 import client as keystone_client
 from novaclient import client as nova_client
 from neutronclient.v2_0 import client as neutron_client
 from oslo_config import cfg
@@ -30,6 +31,8 @@ opts = [
                 help='Use OpenStack Barbican to store sensitive data'),
     cfg.BoolOpt('use_pat_bastions', default=True,
                 help='Use PAT as a "poor man\'s" approach to bastions'),
+    cfg.IntOpt('ssh_port', default=2222,
+                help='SSH server port number managed by Tatu (may be other than 22)'),
     cfg.IntOpt('num_total_pats', default=3,
                 help='Number of available PAT addresses for bastions'),
     cfg.IntOpt('num_pat_bastions_per_server', default=2,
@@ -87,6 +90,7 @@ auth = v3.Password(auth_url=CONF.tatu.auth_url,
                    password=CONF.tatu.password,
                    project_id=CONF.tatu.project_id)
 session = keystone_session.Session(auth=auth)
+KEYSTONE = keystone_client.Client(session=session)
 NOVA = nova_client.Client('2', session=session)
 NEUTRON = neutron_client.Client(session=session)
 DESIGNATE = designate_client.Client(session=session)
