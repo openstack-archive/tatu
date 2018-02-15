@@ -17,7 +17,7 @@ Tatu provides APIs that allows:
 During negotiation of the SSH connection:
 
 #. The server presents its host certificate.
-#. The client checks the validity of the host certificate using a Host CA public key configured in its known_hosts file (config line starts with @cert-authority).
+#. The client checks the validity of the host certificate using a Host CA public key configured in its known_hosts file (config line starts with @cert-authority <domain>).
 #. The client presents its client certificate.
 #. The server checks the validity of the client certifiate using a User CA public key configured in sshd_config (TrustedUserCAKeys). The server also checks that the certificate has not been revoked (RevokedKeys in sshd_config).
 #. The client certificate also contains a list of SSH principals, some of which the sshd_config may recognize as mapped to specific Linux accounts on the server (AuthorizedPrincipalsFile in sshd_config). The client is only allowed to login to those Linux accounts.
