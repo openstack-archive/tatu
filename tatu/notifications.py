@@ -69,13 +69,16 @@ class NotificationEndpoint(object):
             # TODO: look for domain if project isn't available
             proj_id = payload['project']
             for user_id in users:
+                roles = ks_utils.getProjectRoleNamesForUser(proj_id, user_id)
                 try:
-                    db.revokeUserCertsInProject(se, user_id, proj_id)
+                    se = self.Session()
+                    db.revokeUserCertsForRoleChange(se, user_id, proj_id, roles)
                 except Exception as e:
                     LOG.error(
                         "Failed to revoke user {} certificates in project {} "
-                        "after role assignment change, due to exception {}"
-                            .format(user_id, proj_id, e))
+                        "after role {} was removed, due to exception {}"
+                            .format(user_id, proj_id, payload['role'], e))
+                    import traceback; traceback.print_exc()
                     se.rollback()
                     self.Session.remove()
         elif event_type ==  'identity.user.deleted':
@@ -92,7 +95,7 @@ class NotificationEndpoint(object):
                 se.rollback()
                 self.Session.remove()
         elif event_type == 'compute.instance.delete.end':
-            instance_id = payload.get('instance_id')
+            instance_id = canonical_uuid_string(payload.get('instance_id'))
             host = db.getHost(se, instance_id)
             if host is not None:
                 _deleteHost(self.Session, host)
@@ -175,24 +178,39 @@ def sync(engine):
 
     LOG.info("Revoke user certificates if user was deleted or lost a role.")
     for cert in db.getUserCerts(session_factory()):
-        # Invalidate the cert if the user was removed from Keystone
-        if cert.user_id not in ks_user_ids:
-            db.revokeUserCert(cert)
-            continue
+        if cert.revoked: continue
+        se = session_factory()
 
-        # Invalidate the cert if it has any principals that aren't current
-        p = ks_utils.getProjectRoleNamesForUser(cert.auth_id, cert.user_id)
-        cert_p = cert.principals.split(",")
-        if len(set(cert_p) - set(p)) > 0:
-            se = session_factory()
-            db.revokeUserCert(cert)
+        try:
+            # Invalidate the cert if the user was removed from Keystone
+            if cert.user_id not in ks_user_ids:
+                db.revokeUserCert(se, cert)
+                continue
+
+            # Invalidate the cert if it has any principals that aren't current
+            roles = ks_utils.getProjectRoleNamesForUser(cert.auth_id,
+                                                        cert.user_id)
+            old_roles = cert.principals.split(",")
+            removed_roles = set(old_roles) - set(roles)
+            if len(removed_roles) > 0:
+                LOG.info("Revoking certificate with serial {} for user {}"
+                         " because roles/principals {} were removed."
+                    .format(cert.serial, cert.user_name, removed_roles))
+                db.revokeUserCert(se, cert)
+
+        except:
+            LOG.error(
+            "Failed to delete certificate with serial {} for user {}"
+                .format(cert.serial, cert.user_id))
+            se.rollback()
+            session_factory.remove()
 
     # Iterate through all the instance IDs in Tatu. Clean up DNS and PAT for
     # any that no longer exist in Nova.
     LOG.info("Delete DNS and PAT resources of any server that was deleted.")
     instance_ids = set()
     for instance in nova.servers.list(search_opts={'all_tenants': True}):
-        instance_ids.add(instance.id)
+        instance_ids.add(canonical_uuid_string(instance.id))
     for host in db.getHosts(session_factory()):
         if host.id not in instance_ids:
             _deleteHost(session_factory, host)
@@ -200,7 +218,7 @@ def sync(engine):
 
 def main():
     transport = oslo_messaging.get_notification_transport(CONF)
-    targets = [oslo_messaging.Target(topic='notifications')]
+    targets = [oslo_messaging.Target(topic='tatu_notifications')]
     storage_engine = create_engine(CONF.tatu.sqlalchemy_engine)
 
     endpoints = [NotificationEndpoint(storage_engine)]

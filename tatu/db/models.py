@@ -18,11 +18,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.declarative import declarative_base
 import sshpubkeys
 
+from oslo_log import log as logging
 from tatu.castellano import get_secret, store_secret
 from tatu.ks_utils import getProjectRoleNamesForUser
 from tatu.utils import canonical_uuid_string, generateCert, revokedKeysBase64, random_uuid
 
 Base = declarative_base()
+LOG = logging.getLogger(__name__)
 
 
 class Authority(Base):
@@ -167,7 +169,24 @@ def getRevokedKeysBase64(session, auth_id):
 def revokeUserCert(session, cert):
     cert.revoked = True
     session.add(cert)
-    session.add(db.RevokedKey(cert.auth_id, serial=cert.serial))
+    session.add(RevokedKey(auth_id=cert.auth_id, serial=cert.serial))
+    session.commit()
+
+
+def revokeUserCertsForRoleChange(session, user_id, proj_id, new_roles):
+    new_roles = set(new_roles)
+    for cert in session.query(UserCert).filter(UserCert.user_id == user_id).filter(UserCert.auth_id == proj_id):
+        if cert.revoked: continue
+        # A certificate is too permissive if it allows roles that were removed in Keystone.
+        old_roles = cert.principals.split(",")
+        removed_roles = set(old_roles) - new_roles
+        if len(removed_roles) > 0:
+            LOG.info("Revoking certificate with serial {} for user {}"
+                     " because roles/principals {} were removed."
+                .format(cert.serial, cert.user_name, removed_roles))
+            cert.revoked = True
+            session.add(cert)
+            session.add(RevokedKey(auth_id=cert.auth_id, serial=cert.serial))
     session.commit()
 
 
@@ -176,7 +195,7 @@ def revokeUserCerts(session, user_id):
     for u in session.query(UserCert).filter(UserCert.user_id == user_id):
         u.revoked = True
         session.add(u)
-        session.add(RevokedKey(u.auth_id, serial=u.serial))
+        session.add(RevokedKey(auth_id=u.auth_id, serial=u.serial))
     session.commit()
 
 
@@ -185,7 +204,7 @@ def revokeUserCertsInProject(session, user_id, project_id):
     for u in session.query(UserCert).filter(UserCert.user_id == user_id).filter(UserCert.auth_id == project_id):
         u.revoked = True
         session.add(u)
-        session.add(RevokedKey(u.auth_id, serial=u.serial))
+        session.add(RevokedKey(auth_id=u.auth_id, serial=u.serial))
     session.commit()
 
 

@@ -103,7 +103,7 @@ def deletePatEntries(ip_port_tuples):
     pat_entries = DRAGONFLOW.get_all(PATEntry)
     tuples = set(ip_port_tuples)
     for entry in pat_entries:
-        if (entry.pat.id, entry.pat_l4_port) in tuples:
+        if (entry.pat.id, str(entry.pat_l4_port)) in tuples:
             DRAGONFLOW.delete(entry)
 
 
