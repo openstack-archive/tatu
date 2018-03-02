@@ -21,8 +21,10 @@ from tatu.config import CONF
 from tatu.db import models as db
 from tatu.dns import add_srv_records
 from tatu.ks_utils import getProjectRoleNames, getProjectNameForID, getUserNameForID
-from tatu.pat import create_pat_entries, getAllPats, ip_port_tuples_to_string
 from tatu.utils import canonical_uuid_string, datetime_to_string
+
+if CONF.tatu.use_pat_bastions:
+    from tatu.pat import create_pat_entries, getAllPats, ip_port_tuples_to_string
 
 LOG = logging.getLogger(__name__)
 
@@ -349,12 +351,13 @@ class PATs(object):
     @falcon.before(validate)
     def on_get(self, req, resp):
         items = []
-        for p in getAllPats():
-            items.append({
-                'ip': str(p.ip_address),
-                'chassis': p.chassis.id,
-                'lport': p.lport.id,
-            })
+        if CONF.tatu.use_pat_bastions:
+            for p in getAllPats():
+                items.append({
+                    'ip': str(p.ip_address),
+                    'chassis': p.chassis.id,
+                    'lport': p.lport.id,
+                })
         body = {'pats': items}
         resp.body = json.dumps(body)
         resp.status = falcon.HTTP_OK

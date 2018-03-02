@@ -24,14 +24,18 @@ from tatu.utils import dash_uuid
 
 LOG = logging.getLogger(__name__)
 #TODO(pino): periodically refresh this list
-PATS = DRAGONFLOW.get_all(PAT)
+PATS = None
 
 
 def getAllPats():
+    if not CONF.tatu.use_pat_bastions:
+        return []
     return DRAGONFLOW.get_all(PAT)
 
 
 def _sync_pats():
+    if not CONF.tatu.use_pat_bastions:
+        return
     # TODO(pino): re-bind PATs when hypervisors fail (here and on notification)
     all_chassis = DRAGONFLOW.get_all(Chassis)
     # Filter the chassis that already have PATS assigned
@@ -45,6 +49,8 @@ def _sync_pats():
         for c in assigned_chassis:
             _add_pat(c)
     dns.sync_bastions(str(p.ip_address) for p in PATS)
+    global PATS
+    PATS = DRAGONFLOW.get_all(PAT)
 
 
 def _add_pat(chassis):

@@ -11,8 +11,6 @@
 #    under the License.
 
 from designateclient.v2 import client as designate_client
-from dragonflow import conf as dragonflow_cfg
-from dragonflow.db import api_nb
 from keystoneauth1 import session as keystone_session
 from keystoneauth1.identity import v3
 from keystoneclient.v3 import client as keystone_client
@@ -60,7 +58,7 @@ opts = [
                help='OpenStack Keystone admin project UUID'),
 ]
 
-CONF = cfg.CONF
+CONF = cfg.ConfigOpts()
 CONF.register_opts(opts, group='tatu')
 
 logging.register_options(CONF)
@@ -68,22 +66,26 @@ log_levels = logging.get_default_log_levels() + \
              ['tatu=DEBUG', '__main__=DEBUG']
 logging.set_defaults(default_log_levels=log_levels)
 
-
-try:
-    CONF(args=[], default_config_files=['/etc/tatu/tatu.conf',
-                                       'files/tatu.conf',
-                                       '/etc/neutron/dragonflow.ini'])
-except Exception as e:
-    LOG.error("Failed to load configuration file: {}".format(e))
- 
+CONF(args=[], default_config_files=['/etc/tatu/tatu.conf'])
 logging.setup(CONF, "tatu")
+
+GCONF = cfg.CONF
+
 if CONF.tatu.use_barbican_key_manager:
     LOG.debug("Using Barbican as key manager.")
-    set_castellan_defaults(CONF)
+    set_castellan_defaults(GCONF)
 else:
     LOG.debug("Using Tatu as key manager.")
-    set_castellan_defaults(CONF,
+    set_castellan_defaults(GCONF,
                            api_class='tatu.castellano.TatuKeyManager')
+
+global_config_files = ['/etc/tatu/tatu.conf']
+if CONF.tatu.use_pat_bastions:
+    from dragonflow import conf as dragonflow_cfg
+    from dragonflow.db import api_nb
+    global_files.append('/etc/neutron/dragonflow.ini')
+
+GCONF(args=[], default_config_files=global_config_files)
 
 auth = v3.Password(auth_url=CONF.tatu.auth_url,
                    user_id=CONF.tatu.user_id,
@@ -95,8 +97,10 @@ NOVA = nova_client.Client('2', session=session)
 NEUTRON = neutron_client.Client(session=session)
 DESIGNATE = designate_client.Client(session=session)
 
-dragonflow_cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
-DRAGONFLOW = api_nb.NbApi.get_instance(False)
+DRAGONFLOW = None
+if CONF.tatu.use_pat_bastions:
+    dragonflow_cfg.CONF.set_override('enable_df_pub_sub', False, group='df')
+    DRAGONFLOW = api_nb.NbApi.get_instance(False)
 
 # Create a context for use by Castellan
 CONTEXT = context.RequestContext(auth_token=auth.get_token(session),

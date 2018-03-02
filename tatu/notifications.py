@@ -25,8 +25,10 @@ from tatu.config import KEYSTONE as ks
 from tatu.config import NOVA as nova
 from tatu.db import models as db
 from tatu.dns import delete_srv_records
-from tatu.pat import deletePatEntries, string_to_ip_port_tuples
 from tatu.utils import canonical_uuid_string
+
+if CONF.tatu.use_pat_bastions:
+    from tatu.pat import deletePatEntries, string_to_ip_port_tuples
 
 LOG = logging.getLogger(__name__)
 
@@ -138,8 +140,9 @@ def _deleteAuthority(session_factory, auth):
 def _deleteHost(session_factory, host):
     LOG.debug("Clean up DNS and PAT for deleted instance {} with ID {}"
               .format(host.name, host.id))
-    delete_srv_records(host.srv_url)
-    deletePatEntries(string_to_ip_port_tuples(host.pat_bastions))
+    if CONF.tatu.use_pat_bastions:
+        delete_srv_records(host.srv_url)
+        deletePatEntries(string_to_ip_port_tuples(host.pat_bastions))
     se = session_factory()
     try:
         LOG.info(

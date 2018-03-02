@@ -11,11 +11,17 @@
 #    under the License.
 
 import falcon
+import json
 from oslo_log import log as logging
 from tatu.api import models
 from tatu.db.persistence import SQLAlchemySessionManager
 
 LOG = logging.getLogger(__name__)
+
+class RootPage(object):
+    def on_get(self, req, resp):
+        resp.body = json.dumps({})
+        resp.status = falcon.HTTP_OK
 
 def create_app(sa):
     LOG.info("Creating falcon API instance for authenticated API calls.")
@@ -39,6 +45,7 @@ def create_noauth_app(sa):
     api = falcon.API(middleware=[models.Logger(), sa])
     api.add_route('/hostcerts', models.HostCerts())
     api.add_route('/revokeduserkeys/{auth_id}', models.RevokedUserKeys())
+    api.add_route('/', RootPage())
     return api
 
 def auth_factory(global_config, **settings):

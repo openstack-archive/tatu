@@ -21,7 +21,7 @@ python-memcached
 python-designateclient
 python-neutronclient
 python-novaclient
-dragonflow
+#dragonflow
 eventlet
 vine
 python-designateclient
