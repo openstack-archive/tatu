@@ -1,4 +1,9 @@
 #cloud-config
+package_update: false
+packages:
+  - git
+  - golang
+  - pam-devel
 mounts:
   - [ /dev/disk/by-label/config-2, /mnt/config ]
 write_files:
@@ -68,13 +73,11 @@ write_files:
             adduser $i
           fi
         done
+        x=0
         for i in ${sudoers//,/ }; do
-          if [ $(getent group sudo) ]; then
-            usermod -aG sudo $i
-          fi
-          if [ $(getent group wheel) ]; then
-            usermod -aG wheel $i
-          fi
+          prefix=$((130 + x++))
+          echo $i ALL= ALL > /etc/sudoers.d/$prefix-$i
+          echo Defaults:$i timestamp_timeout=0 >> /etc/sudoers.d/$prefix-$i
         done
         sed -i -e '$aTrustedUserCAKeys /etc/ssh/ca_user.pub' /etc/ssh/sshd_config
         # man sshd_config, under AuthorizedPrincipalsFile:  The default is none, i.e. not to use a principals file
@@ -89,6 +92,34 @@ write_files:
         sed -i -e '$aPort 22' /etc/ssh/sshd_config
         setenforce permissive
         systemctl restart sshd
+        echo Completed!
+  - path: /root/tatu-setup-pam.sh
+    permissions: '0700'
+    owner: root:root
+    content: |
+        #!/bin/bash
+        # Name: tatu-setup-pam.sh
+        #
+        # Purpose: Install uber/pam-ussh so that every sudo call authenticates the user's certificate in the background.
+        # If the user's certificate expires or is revoked, sudo authentication will fail. They lose sudo privileges even if
+        # they are still logged in.
+        cd /root
+        rm -rf /root/pam-ussh
+        #dnf install -y pam-devel golang git
+        git clone https://github.com/pinodeca/pam-ussh
+        cd pam-ussh
+        git checkout -b krl origin/krl
+        export GOPATH=/root/pam-ussh/.go
+        go get golang.org/x/crypto/ssh
+        go get github.com/stretchr/testify/require
+        go get github.com/stripe/krl
+        make
+        mv pam_ussh.so /lib64/security/
+        vendordata=$(cat /mnt/config/openstack/latest/vendor_data2.json)
+        sudoers=$(echo $vendordata | grep -Po '"sudoers": "\K[^"]*')
+        echo setting up pam-ussh sudo authentication for $sudoers
+        sed -i -e '/auth.*pam_unix/i \
+        auth sufficient /lib64/security/pam_ussh.so ca_file=/etc/ssh/ca_user.pub authorized_principals='"$sudoers"' revoked_keys_file=/etc/ssh/revoked-keys' /etc/pam.d/system-auth
   - path: /root/tatu-manage-revoked-keys.sh
     permissions: '0700'
     owner: root:root
@@ -97,7 +128,6 @@ write_files:
         # Name: tatu-manage-revoked-keys.sh
         #
         # Purpose: Fetch the revoked keys data from Tatu and write it to /etc/ssh
-        # !/usr/bin/env python
         metadata=$(cat /mnt/config/openstack/latest/meta_data.json)
         auth_id=$(echo $metadata | grep -Po 'project_id": "\K[^"]*')
         echo auth_id=$auth_id
@@ -116,3 +146,4 @@ runcmd:
   - /root/tatu-setup-ssh.sh > /var/log/tatu-setup-ssh.log 2>&1
   - /root/tatu-manage-revoked-keys.sh > /var/log/tatu-revoked-keys.log
   - crontab -l | { cat; echo "* * * * * /root/tatu-manage-revoked-keys.sh >> /var/log/tatu-revoked-keys.log"; } | crontab -
+  - /root/tatu-setup-pam.sh > /var/log/tatu-setup-pam.log 2>&1
