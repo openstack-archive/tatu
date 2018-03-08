@@ -57,21 +57,21 @@ function configure_tatu {
     iniset $KEYSTONE_CONF oslo_messaging_notifications topics notifications,tatu_notifications
     iniset $NOVA_CONF oslo_messaging_notifications topics notifications,tatu_notifications
 
-    iniset $NOVA_CPU_CONF DEFAULT force_config_drive TRUE
+    iniset $NOVA_CONF DEFAULT force_config_drive TRUE
 
     # Set up Tatu static vendor data.
     $TATU_DIR/scripts/cloud-config-to-vendor-data $TATU_DIR/files/user-cloud-config > $NOVA_CONF_DIR/tatu_static_vd.json
-    iniset $NOVA_CPU_CONF api vendordata_providers StaticJSON,DynamicJSON
-    iniset $NOVA_CPU_CONF api vendordata_jsonfile_path $NOVA_CONF_DIR/tatu_static_vd.json
-    iniset $NOVA_CPU_CONF api vendordata_dynamic_targets tatu@$TATU_SERVICE_PROTOCOL://$TATU_SERVICE_HOST:$TATU_SERVICE_PORT/novavendordata
-    iniset $NOVA_CPU_CONF api vendordata_dynamic_connect_timeout 5
-    iniset $NOVA_CPU_CONF api vendordata_dynamic_read_timeout 30
-    iniset $NOVA_CPU_CONF vendordata_dynamic_auth auth_url $KEYSTONE_SERVICE_URI
-    iniset $NOVA_CPU_CONF vendordata_dynamic_auth auth_type password
-    iniset $NOVA_CPU_CONF vendordata_dynamic_auth username admin
-    iniset $NOVA_CPU_CONF vendordata_dynamic_auth password $ADMIN_PASSWORD
-    iniset $NOVA_CPU_CONF vendordata_dynamic_auth project_id $admin_project
-    iniset $NOVA_CPU_CONF vendordata_dynamic_auth user_domain_name default
+    iniset $NOVA_CONF api vendordata_providers StaticJSON,DynamicJSON
+    iniset $NOVA_CONF api vendordata_jsonfile_path $NOVA_CONF_DIR/tatu_static_vd.json
+    iniset $NOVA_CONF api vendordata_dynamic_targets tatu@$TATU_SERVICE_PROTOCOL://$TATU_SERVICE_HOST:$TATU_SERVICE_PORT/novavendordata
+    iniset $NOVA_CONF api vendordata_dynamic_connect_timeout 5
+    iniset $NOVA_CONF api vendordata_dynamic_read_timeout 30
+    iniset $NOVA_CONF vendordata_dynamic_auth auth_url $KEYSTONE_SERVICE_URI
+    iniset $NOVA_CONF vendordata_dynamic_auth auth_type password
+    iniset $NOVA_CONF vendordata_dynamic_auth username admin
+    iniset $NOVA_CONF vendordata_dynamic_auth password $ADMIN_PASSWORD
+    iniset $NOVA_CONF vendordata_dynamic_auth project_id $admin_project
+    iniset $NOVA_CONF vendordata_dynamic_auth user_domain_name default
 
     # General Configuration
     iniset_rpc_backend tatu $TATU_CONF DEFAULT
