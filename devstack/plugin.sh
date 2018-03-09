@@ -74,6 +74,13 @@ function configure_tatu {
     iniset $NOVA_CONF vendordata_dynamic_auth project_id $admin_project
     iniset $NOVA_CONF vendordata_dynamic_auth user_domain_name default
 
+    # Castellan (Barbican client) credentials
+    iniset $TATU_CONF key_manager auth_url $KEYSTONE_SERVICE_URI
+    iniset $TATU_CONF key_manager auth_type keystone_password
+    iniset $TATU_CONF key_manager user_id $admin_user
+    iniset $TATU_CONF key_manager password $ADMIN_PASSWORD
+    iniset $TATU_CONF key_manager project_id $admin_project
+
     # General Configuration
     iniset_rpc_backend tatu $TATU_CONF DEFAULT
     iniset $TATU_CONF DEFAULT rpc_response_timeout 5

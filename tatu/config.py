@@ -10,6 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from castellan.common import utils as castellan_utils
+from castellan.options import set_defaults as set_castellan_defaults
 from designateclient.v2 import client as designate_client
 from keystoneauth1 import session as keystone_session
 from keystoneauth1.identity import v3
@@ -19,7 +21,6 @@ from neutronclient.v2_0 import client as neutron_client
 from oslo_config import cfg
 from oslo_context import context
 from oslo_log import log as logging
-from castellan.options import set_defaults as set_castellan_defaults
 
 LOG = logging.getLogger(__name__)
 
@@ -106,5 +107,4 @@ if CONF.tatu.use_pat_bastions:
     DRAGONFLOW = api_nb.NbApi.get_instance(False)
 
 # Create a context for use by Castellan
-CONTEXT = context.RequestContext(auth_token=auth.get_token(session),
-                                 tenant=auth.get_project_id(session))
+CONTEXT = castellan_utils.credential_factory(conf=CONF)
