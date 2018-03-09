@@ -44,14 +44,15 @@ function configure_tatu {
     iniset $TATU_CONF tatu user_id $admin_user
     iniset $TATU_CONF tatu password $ADMIN_PASSWORD
     iniset $TATU_CONF tatu project_id $admin_project 
-    iniset $TATU_CONF tatu use_barbican_key_manager True
-    iniset $TATU_CONF tatu use_pat_bastions False
+    iniset $TATU_CONF tatu use_barbican $TATU_USE_BARBICAN
+    iniset $TATU_CONF tatu use_pat_bastions $TATU_USE_PAT_BASTIONS
     iniset $TATU_CONF tatu ssh_port 2222
-    iniset $TATU_CONF tatu num_total_pats 1
-    iniset $TATU_CONF tatu num_pat_bastions_per_server 1
-    iniset $TATU_CONF tatu pat_dns_zone_name tatuDemo.com.
-    iniset $TATU_CONF tatu pat_dns_zone_email my@tatu.devstack
+    iniset $TATU_CONF tatu num_total_pats $TATU_NUM_TOTAL_PATS
+    iniset $TATU_CONF tatu num_pat_bastions_per_server $TATU_PAT_BASTIONS_PER_SERVER
+    iniset $TATU_CONF tatu pat_dns_zone_name $TATU_DNS_ZONE_NAME
+    iniset $TATU_CONF tatu pat_dns_zone_email $TATU_DNS_ZONE_EMAIL
     iniset $TATU_CONF tatu sqlalchemy_engine `database_connection_url tatu`
+    iniset $TATU_CONF tatu api_endpoint_for_vms $TATU_API_FOR_VMS
 
     # Need Keystone and Nova notifications
     iniset $KEYSTONE_CONF oslo_messaging_notifications topics notifications,tatu_notifications

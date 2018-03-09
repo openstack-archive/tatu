@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 
 # 1) register options; 2) read the config file; 3) use the options
 opts = [
-    cfg.BoolOpt('use_barbican_key_manager', default=False,
+    cfg.BoolOpt('use_barbican', default=False,
                 help='Use OpenStack Barbican to store sensitive data'),
     cfg.BoolOpt('use_pat_bastions', default=True,
                 help='Use PAT as a "poor man\'s" approach to bastions'),
@@ -56,6 +56,9 @@ opts = [
     cfg.StrOpt('project_id',
                default='2e6c998ad16f4045821304470a57d160',
                help='OpenStack Keystone admin project UUID'),
+    cfg.StrOpt('api_endpoint_for_vms',
+               default='http://169.254.169.254',
+               help='Where a VM accesses the API for SSH certs and revoked keys'),
 ]
 
 CONF = cfg.ConfigOpts()
@@ -71,7 +74,7 @@ logging.setup(CONF, "tatu")
 
 GCONF = cfg.CONF
 
-if CONF.tatu.use_barbican_key_manager:
+if CONF.tatu.use_barbican:
     LOG.debug("Using Barbican as key manager.")
     set_castellan_defaults(GCONF)
 else:

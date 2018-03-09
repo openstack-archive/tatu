@@ -41,9 +41,9 @@ write_files:
         echo host public key is $host_pub_key
         data=$(echo {\"token_id\": \"$token\", \"host_id\": \"$host_id\", \"pub_key\": \"$host_pub_key\"})
         echo $data > /tmp/tatu_cert_request.json
-        url=http://169.254.169.254/noauth/hostcerts
-        echo url=$url
-        echo Posting Host Certificate request to Tatu API
+        api=$(echo $vendordata | grep -Po '"api_endpoint": \K[^"]*')
+        url=$api/noauth/hostcerts
+        echo Posting Host Certificate request to Tatu API at $url
         response=$(curl -s -w "%{http_code}" -d "@/tmp/tatu_cert_request.json" -X POST $url)
         code=${response##*\}}
         if [ "$code" != "200" ]; then
@@ -101,8 +101,10 @@ write_files:
         metadata=$(cat /mnt/config/openstack/latest/meta_data.json)
         auth_id=$(echo $metadata | grep -Po 'project_id": "\K[^"]*')
         echo auth_id=$auth_id
-        url=http://169.254.169.254/noauth/revokeduserkeys/$auth_id
-        echo url=$url
+        vendordata=$(cat /mnt/config/openstack/latest/vendor_data2.json)
+        api=$(echo $vendordata | grep -Po '"api_endpoint": \K[^"]*')
+        url=$api/noauth/revokeduserkeys/$auth_id
+        echo Fetching revoked user keys from Tatu API at $url
         response=$(curl -s -w "%{http_code}" $url)
         code=${response##*\}}
         if [ "$code" != "200" ]; then

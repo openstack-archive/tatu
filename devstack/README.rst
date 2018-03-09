@@ -18,3 +18,8 @@ repository.  See contrib/vagrant to create a vagrant VM.
      enable_plugin tatu https://github.com/openstack/tatu
 
 3. run ``stack.sh``
+
+Note that Tatu requires Barbican (and optionally Designate and Dragonflow
+if you're using the PAT bastions experimental feature).
+
+See the local.conf and local-df.conf examples in this directory.

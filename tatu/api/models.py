@@ -300,6 +300,7 @@ class NovaVendorData(object):
             'users': ','.join(roles),
             'sudoers': ','.join([r for r in roles if "admin" in r]),
             'ssh_port': CONF.tatu.ssh_port,
+            'api_endpoint': CONF.tatu.api_endpoint_for_vms,
         }
         resp.body = json.dumps(vendordata)
         resp.location = '/hosttokens/' + token.token_id
