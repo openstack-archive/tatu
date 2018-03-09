@@ -25,19 +25,22 @@ Tatu provides APIs that allow:
   their public key, and to learn the public key of the CA for users.
 
 During VM provisioning:
-* Tatu's cloud-init script is passed to the VM via Nova static vendor data.
+
+* Tatu's cloud-init script is passed to the VM via Nova **static** vendor data.
 * VM-specific configuration is placed in the VM's ConfigDrive thanks to Nova's
   **dynamic** vendor data call to Tatu API.
 * The cloud-init script consumes the dynamic vendor data:
-** A one-time-token is used to authenticate the VM's request to Tatu API to
-   sign the VM's public key (and return and SSH host certificate).
-** A list of the VM's project's Keystone roles is used to create user accounts
-   on the VM.
-** A list of sudoers is used to decide which users get password-less sudo
-   privileges. The current policy is that any Keystone role containing "admin"
-   should correspond to a user account with sudo privileges.
-** The public key of the CA for User SSH certificates is retrieved, and along
-   with the requested SSH Host Certificate, is used to (re)configure SSH.
+
+  * A one-time-token is used to authenticate the VM's request to Tatu API to
+    sign the VM's public key (and return and SSH host certificate).
+  * A list of the VM's project's Keystone roles is used to create user accounts
+    on the VM.
+  * A list of sudoers is used to decide which users get password-less sudo
+    privileges. The current policy is that any Keystone role containing "admin"
+    should correspond to a user account with sudo privileges.
+  * The public key of the CA for User SSH certificates is retrieved, and along
+    with the requested SSH Host Certificate, is used to (re)configure SSH.
+
 * A cron job is configured for the VM to periodically poll Tatu for the revoked
   keys list.
 
@@ -60,11 +63,11 @@ During negotiation of the SSH connection:
 
 Use of host certificates prevents MITM (man in the middle) attacks. Without
 host certificates, users of SSH client software are presented with a message
-like this one when they first connect to an SSH server:
+like this one when they first connect to an SSH server::
 
-  | The authenticity of host '111.111.11.111 (111.111.11.111)' can't be established.
-  | ECDSA key fingerprint is fd:fd:d4:f9:77:fe:73:84:e1:55:00:ad:d6:6d:22:fe.
-  | Are you sure you want to continue connecting (yes/no)?
+    The authenticity of host '111.111.11.111 (111.111.11.111)' can't be established.
+    ECDSA key fingerprint is fd:fd:d4:f9:77:fe:73:84:e1:55:00:ad:d6:6d:22:fe.
+    Are you sure you want to continue connecting (yes/no)?
 
 There's no way to verify the fingerprint unless there's some other way of
 logging into the VM (e.g. novnc with password - whhich is not recommended).
@@ -85,6 +88,7 @@ APIs, Horizon Panels, and OpenStack CLIs
 ----------------------------------------
 
 Tatu provides REST APIs, Horizon Panels and OpenStack CLIs to:
+
 * Retrieve the public keys of the user and host CAs for each OpenStack project.
   See ssh ca --help
 * Create (and revoke) SSH user certificates with principals corresponding to
@@ -172,6 +176,7 @@ Bastion Management
 
 Tatu aims to manage SSH bastions for OpenStack environments. This feature
 would provide the following benefits:
+
 * reduce operational burden for users that already manage bastions themselves.
 * avoid assigning Floating IP addresses to VMs for sole purpose of SSH access.
 * provide a single point of security policy enforcement, and especially one
@@ -189,6 +194,7 @@ per VM, but it does not provide a single point of policy enforcement because
 PAT always translates and forwards without checking certificates as a full SSH
 proxy would. **PAT bastions are only supported by an experimental version
 of Dragonflow Neutron plugin.** It works as follows:
+
 * At setup time, Tatu reserves a configurable number of ports in the Public
   network. Their IP addresses are used for PAT. Dragonflow randomly assigns
   each PAT addresses to a different compute node. That compute node then acts
