@@ -78,7 +78,8 @@ authorized_keys file.
 Installation
 ------------
 
-Please see the INSTALLATION document in this repository.
+Please see the INSTALLATION document in this repository. Then see the TRY_IT
+document as well for step by step instructions on using it.
 
 APIs, Horizon Panels, and OpenStack CLIs
 ----------------------------------------
