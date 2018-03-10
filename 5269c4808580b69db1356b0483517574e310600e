@@ -1,0 +1,8 @@
+Code-Review+2: Pino de Candia <giuseppe.decandia@gmail.com>
+Workflow+1: Pino de Candia <giuseppe.decandia@gmail.com>
+Verified+2: Zuul
+Submitted-by: Zuul
+Submitted-at: Sat, 10 Mar 2018 20:41:56 +0000
+Reviewed-on: https://review.openstack.org/551716
+Project: openstack/tatu
+Branch: refs/heads/master
