@@ -62,6 +62,9 @@ opts = [
     cfg.StrOpt('api_endpoint_for_vms',
                default='http://169.254.169.254',
                help='Where a VM accesses the API for SSH certs and revoked keys'),
+    cfg.StrOpt('api_base_uri',
+               default='http://169.254.169.254',
+               help='Base URI for version discovery.'),
 ]
 
 CONF = cfg.ConfigOpts()

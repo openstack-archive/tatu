@@ -54,6 +54,7 @@ function configure_tatu {
     iniset $TATU_CONF tatu sqlalchemy_engine `database_connection_url tatu`
     iniset $TATU_CONF tatu api_endpoint_for_vms $TATU_API_FOR_VMS
     iniset $TATU_CONF tatu pam_sudo True
+    iniset $TATU_CONF tatu api_base_uri $TATU_SERVICE_PROTOCOL://$TATU_SERVICE_HOST:$TATU_SERVICE_PORT/
 
     # Need Keystone and Nova notifications
     iniset $KEYSTONE_CONF oslo_messaging_notifications topics notifications,tatu_notifications
@@ -65,7 +66,7 @@ function configure_tatu {
     $TATU_DIR/scripts/cloud-config-to-vendor-data $TATU_DIR/files/user-cloud-config > $NOVA_CONF_DIR/tatu_static_vd.json
     iniset $NOVA_CONF api vendordata_providers StaticJSON,DynamicJSON
     iniset $NOVA_CONF api vendordata_jsonfile_path $NOVA_CONF_DIR/tatu_static_vd.json
-    iniset $NOVA_CONF api vendordata_dynamic_targets tatu@$TATU_SERVICE_PROTOCOL://$TATU_SERVICE_HOST:$TATU_SERVICE_PORT/novavendordata
+    iniset $NOVA_CONF api vendordata_dynamic_targets tatu@$TATU_SERVICE_PROTOCOL://$TATU_SERVICE_HOST:$TATU_SERVICE_PORT/v1/novavendordata
     iniset $NOVA_CONF api vendordata_dynamic_connect_timeout 5
     iniset $NOVA_CONF api vendordata_dynamic_read_timeout 30
     iniset $NOVA_CONF vendordata_dynamic_auth auth_url $KEYSTONE_SERVICE_URI
