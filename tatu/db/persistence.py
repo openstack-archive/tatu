@@ -23,7 +23,7 @@ class SQLAlchemySessionManager(object):
 
     def __init__(self):
         LOG.info('Creating sqlalchemy engine {}'.format(config.CONF.tatu.sqlalchemy_engine))
-        self.engine = create_engine(config.CONF.tatu.sqlalchemy_engine)
+        self.engine = create_engine(config.CONF.tatu.sqlalchemy_engine, pool_recycle=3600)
         #self.engine.execute("CREATE DATABASE IF NOT EXISTS tatu;")
         #self.engine.execute("USE tatu;")
         Base.metadata.create_all(self.engine)
