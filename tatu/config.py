@@ -26,6 +26,8 @@ LOG = logging.getLogger(__name__)
 
 # 1) register options; 2) read the config file; 3) use the options
 opts = [
+    cfg.BoolOpt('pam_sudo', default=False,
+                help='Use pam-ussh module to validate certificates on sudo calls'),
     cfg.BoolOpt('use_barbican', default=False,
                 help='Use OpenStack Barbican to store sensitive data'),
     cfg.BoolOpt('use_pat_bastions', default=True,

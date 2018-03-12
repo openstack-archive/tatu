@@ -162,14 +162,20 @@ KeyPairs continue to work as designed, which is useful for debugging Tatu or
 having a fallback method to access the VMs.
 
 Tatu's policy is that any role containing the word "admin" results in a user
-account with passwordless sudo privileges. Thanks to the uber/pam-ussh
-integration (not yet merged as of March 9, 2018) sudo privilege is revoked as
-soon as the VM learns that the user's certificate has been revoked. However,
-uber/pam-ussh requires the client to run ssh-agent and ssh-add their
-certificate.
+account with sudo privileges. Note that because of this policy, an OpenStack
+user may not have sudo privileges on VMs she herself launched.
 
-Note that because of this policy, an OpenStack user may not have sudo
-privileges on VMs she herself launched.
+Uber's pam-ussh module
+----------------------
+
+Thanks to the uber/pam-ussh integration sudo privilege is revoked as soon as
+the VM learns that the user's certificate has been revoked. However,
+uber/pam-ussh requires the client to run ssh-agent, ssh-add their key
+(corresponding to their certificate) and launch ssh with the -A option.
+
+This feature is enabled/disabled by setting pam_sudo to True/False in tatu's
+configuration. When the feature is disabled, sudo access is not authenticated,
+it's password-less (since we don't use passwords in our user account setup).
 
 Bastion Management
 ------------------

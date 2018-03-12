@@ -53,6 +53,7 @@ function configure_tatu {
     iniset $TATU_CONF tatu pat_dns_zone_email $TATU_DNS_ZONE_EMAIL
     iniset $TATU_CONF tatu sqlalchemy_engine `database_connection_url tatu`
     iniset $TATU_CONF tatu api_endpoint_for_vms $TATU_API_FOR_VMS
+    iniset $TATU_CONF tatu pam_sudo True
 
     # Need Keystone and Nova notifications
     iniset $KEYSTONE_CONF oslo_messaging_notifications topics notifications,tatu_notifications

@@ -20,6 +20,9 @@ write_files:
         host_id=$(echo $metadata | grep -Po 'uuid": "\K[^"]*')
         echo host_id=$host_id
         vendordata=$(cat /mnt/config/openstack/latest/vendor_data2.json)
+        pam_sudo=$(echo $vendordata | grep -Po '"pam_sudo": \K[^,]*' | tr '[:upper:]' '[:lower:]')
+        pam_sudo=${pam_sudo:-false}
+        echo pam_sudo=$pam_sudo
         token=$(echo $vendordata | grep -Po '"token": "\K[^"]*')
         if [ -z $token ]; then
           echo Failed to extract the Tatu token ID from vendordata
@@ -68,14 +71,19 @@ write_files:
             adduser $i
           fi
         done
+        x=0
         for i in ${sudoers//,/ }; do
-          if [ $(getent group sudo) ]; then
-            usermod -aG sudo $i
-          fi
-          if [ $(getent group wheel) ]; then
-            usermod -aG wheel $i
+          prefix=$((130 + x++))
+          if [ "$pam_sudo" = true ]; then
+            echo $i ALL= ALL > /etc/sudoers.d/$prefix-$i
+            echo Defaults:$i timestamp_timeout=1 >> /etc/sudoers.d/$prefix-$i
+          else
+            echo $i ALL= NOPASSWD: ALL > /etc/sudoers.d/$prefix-$i
           fi
         done
+        if [ "$pam_sudo" = true ]; then
+          (crontab -l; echo "* * * * * /root/tatu-setup-pam.sh >> /var/log/tatu-setup-pam.log") | crontab -
+        fi
         sed -i -e '$aTrustedUserCAKeys /etc/ssh/ca_user.pub' /etc/ssh/sshd_config
         # man sshd_config, under AuthorizedPrincipalsFile:  The default is none, i.e. not to use a principals file
         # – in this case, the username of the user must appear in a certificate's principals list for it to be accepted.
@@ -89,6 +97,38 @@ write_files:
         sed -i -e '$aPort 22' /etc/ssh/sshd_config
         setenforce permissive
         systemctl restart sshd
+        echo Completed!
+  - path: /root/tatu-setup-pam.sh
+    permissions: '0700'
+    owner: root:root
+    content: |
+        #!/bin/bash
+        # Name: tatu-setup-pam.sh
+        #
+        # Purpose: Install uber/pam-ussh so that every sudo call authenticates the user's certificate in the background.
+        # If the user's certificate expires or is revoked, sudo authentication will fail. They lose sudo privileges even if
+        # they are still logged in.
+        crontab -l | grep -v 'tatu-setup-pam' | crontab -
+        cd /root
+        rm -rf /root/pam-ussh
+        inst=`which dnf`
+        inst=${inst:-`which yum`}
+        inst=${inst:-`which apt-get`}
+        $inst install -y pam-devel golang git
+        git clone https://github.com/pinodeca/pam-ussh
+        cd pam-ussh
+        git checkout -b krl origin/krl
+        export GOPATH=/root/pam-ussh/.go
+        go get golang.org/x/crypto/ssh
+        go get github.com/stretchr/testify/require
+        go get github.com/stripe/krl
+        make
+        mv pam_ussh.so /lib64/security/
+        vendordata=$(cat /mnt/config/openstack/latest/vendor_data2.json)
+        sudoers=$(echo $vendordata | grep -Po '"sudoers": "\K[^"]*')
+        echo setting up pam-ussh sudo authentication for $sudoers
+        sed -i -e '/auth.*pam_unix/i \
+        auth sufficient /lib64/security/pam_ussh.so ca_file=/etc/ssh/ca_user.pub authorized_principals='"$sudoers"' revoked_keys_file=/etc/ssh/revoked-keys' /etc/pam.d/system-auth
   - path: /root/tatu-manage-revoked-keys.sh
     permissions: '0700'
     owner: root:root
