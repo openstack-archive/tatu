@@ -4,12 +4,6 @@ Notes on using Tatu for the first time
 **In this example, I'm the "demo" user and I need to connect to VMs in projects
 named "demo" and "invisible_to_admin".**
 
-**In the following examples, openstack commands will output a warning like this**::
-
-    Failed to contact the endpoint at http://147.75.65.211:18322/ for discovery. Fallback to using that endpoint as the base url.
-
-**You can safely ignore this warning.**
-
 Since you'll need separate SSH user certificates for each of your projects,
 generate separate ssh keys for each of your projects::
 
@@ -98,3 +92,118 @@ which is accepted::
     debug1: Authentications that can continue: publickey,gssapi-keyex,gssapi-with-mic
     debug1: Offering RSA-CERT public key: /root/.ssh/inv_key-cert
     debug1: Server accepts key: pkalg ssh-rsa-cert-v01@openssh.com blen 1088
+
+Sudo privileges
+---------------
+
+Tatu's convention is that every Keystone role associated with a project should
+have a corresponding Linux user account on the VM. In addition, any role with
+'admin' in its name should have a user account with sudo privileges.
+
+When tatu's configuration key "pam_sudo" is set to False, then sudo calls are
+allowed without authentication. Tatu creates a file 130-admin in /etc/sudoers.d
+and containing this configuration::
+
+    admin ALL= NOPASSWD: ALL
+
+In order to test this, go to Horizon, Identity->Projects and click on "Manage
+Members" for one of your projects. Now give one of your Keystone users the role
+'admin'. You will have to generate a new SSH user certificate. You may also
+need to launch a new VM if none of the project's users previously had an admin
+role (because Tatu does not currently keep the VM's accounts up to date with
+the project's Keystone roles).
+
+
+Using Uber's pam-ussh module
+----------------------------
+
+Uber's pam-ussh module handles authentication of sudo calls. You can enable it
+by setting "pam_sudo = True" in the "tatu" stanza in /etc/tatu/tatu.conf.
+
+Tatu's conventions about sudo privileges (explained in the previous section)
+still apply, so go ahead and give one of your project's users a role with
+'admin' in its name. Then launch a VM.
+
+Uber's pam-ussh authenticates sudo calls by querying the client's SSH agent.
+You'll need to run ssh-agent, set some environment variables and ssh-add your
+private key::
+
+    ssh-agent
+        SSH_AUTH_SOCK=/tmp/ssh-IrDH7qOuujNe/agent.17084; export SSH_AUTH_SOCK;
+        SSH_AGENT_PID=17085; export SSH_AGENT_PID;
+        echo Agent pid 17085;
+    # Set the environment variables by copy/pasting the previous command's output
+    SSH_AUTH_SOCK=/tmp/ssh-IrDH7qOuujNe/agent.17084; export SSH_AUTH_SOCK;
+    # Add your private key to the agent
+    ssh-add ~/.ssh/demo_key
+    ssh-add -l
+        2048 SHA256:obvWOMbOuQyaqpvUI9+YxZiNCItlAL3JsQsZEEEx/6k /root/.ssh/demo_key (RSA)
+        2048 SHA256:obvWOMbOuQyaqpvUI9+YxZiNCItlAL3JsQsZEEEx/6k /root/.ssh/demo_key (RSA-CERT)
+
+When you launch ssh, **remember to enable agent forwarding with the -A option**,
+otherwise pam-ussh won't be able to query your agent. We won't need the -i
+option now because the agent will take care of trying the appropriate keys and
+certificates in its negotiation with the server. But let's use the -v option so
+we can see when pam-ussh does its authentication::
+
+    ssh -v -A admin@172.24.4.8
+        ...
+        debug1: Requesting authentication agent forwarding.
+        ...
+        Last login: Tue Mar 13 04:33:05 2018 from 172.24.4.1
+    [admin@dusty ~]$ sudo echo hello
+        debug1: client_input_channel_open: ctype auth-agent@openssh.com rchan 2 win 65536 max 16384
+        debug1: channel 1: new [authentication agent connection]
+        debug1: confirm auth-agent@openssh.com
+        debug1: channel 1: FORCE input drain
+        debug1: channel 1: free: authentication agent connection, nchannels 2
+      hello
+    [admin@dusty ~]$ sudo echo how are you
+      how are you
+    [admin@dusty ~]$
+
+What just happened? Afer login, the first time we ran sudo, there was another
+exchange between ssh server and client. Pam-ussh uses the agent AUTH_SOCK on
+the server to query the ssh-client for its certificates. The ssh-client gets
+them from the ssh-agent. Pam-ussh tries to find a valid ssh certificate (that
+has NOT been revoked - it should not be in the revoked-keys file on the server).
+Failing that, pam-ussh will give up and pass the torch to another pam module
+that does password-based authentication.
+
+How did Tatu configure this on the VM? For each user that should be granted
+sudo privileges, Tatu created a file named like 130-admin in /etc/sudoers.d.
+Its contents look like this::
+
+    admin ALL= ALL
+    Defaults:admin timestamp_timeout=1
+
+A few things to note:
+
+* Compared to when pam_sudo is false, the "NOPASSWD:" option has been dropped;
+* sudo is set to re-authenticate every 1 minute (thanks to timestamp_timeout)
+  and that's why the second sudo call above didn't re-authenticate (unless you
+  waited 60 seconds).
+
+Finally, take a look at the PAM configuration::
+
+    [admin@dusty ~]$ cat /etc/pam.d/sudo
+      #%PAM-1.0
+      auth sufficient /lib64/security/pam_ussh.so ca_file=/etc/ssh/ca_user.pub authorized_principals=admin revoked_keys_file=/etc/ssh/revoked-keys
+      auth       include      system-auth
+      account    include      system-auth
+      password   include      system-auth
+      session    optional     pam_keyinit.so revoke
+      session    required     pam_limits.so
+      session    include      system-auth
+
+Note that pam_ussh validation alone is sufficient to achieve validation. It's
+important that pam_ussh is placed before system-auth. If it were after, pam
+modules in system-auth would be called first and the user would have to fail
+to enter their password a few times before certificate-based authentication
+was attempted by pam_ussh.
+
+Pam-ush's parameters specifies that only 'admin' account can authenticate with
+SSH certificates (others will have to use default mechanism, i.e. passwords,
+which Tatu does not provide); also, pam-ussh will check the revoked-keys file
+that Tatu's VM scripts are keeping up-to-date; and finally, certificate
+signatures are checked against the User CA public key stored in ca_user.pub

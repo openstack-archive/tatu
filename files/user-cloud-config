@@ -127,8 +127,8 @@ write_files:
         vendordata=$(cat /mnt/config/openstack/latest/vendor_data2.json)
         sudoers=$(echo $vendordata | grep -Po '"sudoers": "\K[^"]*')
         echo setting up pam-ussh sudo authentication for $sudoers
-        sed -i -e '/auth.*pam_unix/i \
-        auth sufficient /lib64/security/pam_ussh.so ca_file=/etc/ssh/ca_user.pub authorized_principals='"$sudoers"' revoked_keys_file=/etc/ssh/revoked-keys' /etc/pam.d/system-auth
+        sed -i -e '/auth.*include.*system-auth/i \
+        auth sufficient /lib64/security/pam_ussh.so ca_file=/etc/ssh/ca_user.pub authorized_principals='"$sudoers"' revoked_keys_file=/etc/ssh/revoked-keys' /etc/pam.d/sudo
   - path: /root/tatu-manage-revoked-keys.sh
     permissions: '0700'
     owner: root:root
