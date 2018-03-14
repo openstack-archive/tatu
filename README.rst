@@ -78,11 +78,11 @@ client certificate. This is simpler, more secure and more manageable than
 today's common practice: putting each user's public key in the SSH server's
 authorized_keys file.
 
-Installation
-------------
+Installation (including Devstack)
+---------------------------------
 
 Please see the INSTALLATION document in this repository. Then see the TRY_IT
-document as well for step by step instructions on using it.
+document for step by step instructions on using it.
 
 APIs, Horizon Panels, and OpenStack CLIs
 ----------------------------------------

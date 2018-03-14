@@ -8,14 +8,16 @@ About Devstack and automation tools
 ***********************************
 
 So far (March 2018) I've been developing Tatu on my devstack instance. The
-devstack plugin is mostly working. See the README under tatu/devstack.
+devstack plugin for default Neutron (without bastion support) is working. Use
+the local.conf file in tatu/devstack to set up devstack and then follow the
+steps in tatu/TRY_IT.rst.
 
 No work has been done to automate Tatu installation for production. We plan
 to provide Ansible and Kolla installers, but this is just a vague intent at the
 moment (March 2018).
 
-Manually installing Tatu’s daemons
-==================================
+Manually installing Tatu
+========================
 
 Note that there are 2 daemons: API daemon and Notifications daemon.
 
