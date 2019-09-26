@@ -1,5 +1,0 @@
-=============
-Configuration
-=============
-
-Configuration of tatu.
